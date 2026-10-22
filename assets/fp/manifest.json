@@ -1,0 +1,146 @@
+{
+ "terrain": {
+  "tile": 16,
+  "masks": 16,
+  "grassDeco": 4,
+  "beachDeco": 6,
+  "beachFrames": 6
+ },
+ "farmer": {
+  "cw": 24,
+  "ch": 24,
+  "foot": 21,
+  "cx": 12,
+  "anims": {
+   "idle": [
+    0,
+    4,
+    4
+   ],
+   "walk": [
+    3,
+    8,
+    11
+   ],
+   "plant": [
+    6,
+    7,
+    9
+   ]
+  },
+  "variants": [
+   "wren",
+   "blond",
+   "dark",
+   "elder",
+   "violet",
+   "teal"
+  ]
+ },
+ "skeleton": {
+  "cw": 48,
+  "ch": 38,
+  "foot": 23,
+  "cx": 24,
+  "anims": {
+   "idle": [
+    0,
+    4,
+    4
+   ],
+   "walk": [
+    3,
+    8,
+    11
+   ],
+   "attack": [
+    6,
+    4,
+    9
+   ],
+   "hurt": [
+    9,
+    4,
+    6
+   ],
+   "death": [
+    12,
+    6,
+    8
+   ]
+  },
+  "variants": [
+   "bone",
+   "violet",
+   "ember"
+  ]
+ },
+ "chicken": {
+  "cw": 32,
+  "ch": 24,
+  "foot": 19,
+  "cx": 16,
+  "frames": 5,
+  "variants": [
+   "white",
+   "brown",
+   "gold"
+  ]
+ },
+ "icons": [
+  "seeds",
+  "tomato_seeds",
+  "wheat",
+  "tomato",
+  "hoe",
+  "axe",
+  "can",
+  "stick",
+  "sword",
+  "gem",
+  "bread",
+  "potion",
+  "egg",
+  "fried_egg",
+  "wood",
+  "stew"
+ ],
+ "buildings": {
+  "house": {
+   "w": 64,
+   "h": 58,
+   "door": 32,
+   "base": 55
+  },
+  "barn": {
+   "w": 80,
+   "h": 66,
+   "door": 40,
+   "base": 63
+  },
+  "coop": {
+   "w": 44,
+   "h": 42,
+   "door": 21,
+   "base": 41
+  },
+  "shop": {
+   "w": 76,
+   "h": 60,
+   "door": 53,
+   "base": 56
+  },
+  "well": {
+   "w": 24,
+   "h": 32,
+   "door": 12,
+   "base": 31
+  },
+  "kitchen": {
+   "w": 28,
+   "h": 30,
+   "frames": 3,
+   "base": 28
+  }
+ }
+}
