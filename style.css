@@ -1,0 +1,445 @@
+:root {
+  --night: #3b2616;
+  --panel: rgba(59, 38, 22, 0.86);
+  --moon: #fde6b2;
+  --moon-dim: #d9b98a;
+  --accent: #f4bf57;
+  --wood: #6b4326;
+  --wood-dark: #3b2616;
+  --wood-light: #a8693a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--night);
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  color: var(--moon);
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#coins { color: #f2c94c; font-weight: bold; }
+
+#coords, #controls, #hint {
+  position: absolute;
+  background: var(--panel);
+  border: 1px solid rgba(253, 230, 178, 0.35);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+  backdrop-filter: blur(4px);
+}
+
+#coords {
+  top: 12px;
+  left: 12px;
+  font-variant-numeric: tabular-nums;
+  min-width: 120px;
+}
+
+#controls {
+  bottom: 12px;
+  left: 12px;
+  color: var(--moon-dim);
+  font-size: 13px;
+}
+
+#hint {
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--accent);
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+#hint[hidden] { display: none; }
+
+@media (max-width: 520px) {
+  #controls { display: none; }
+}
+
+/* ---- Health bar ---- */
+#health {
+  position: absolute;
+  top: 52px;
+  left: 12px;
+  width: 200px;
+  height: 22px;
+  background: var(--panel);
+  border: 1px solid rgba(253, 230, 178, 0.35);
+  border-radius: 8px;
+  overflow: hidden;
+}
+#health-fill {
+  height: 100%;
+  width: 100%;
+  background: #d9534f;
+  transition: width 0.15s ease-out;
+}
+#health-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px #000;
+}
+
+/* ---- Game over ---- */
+#gameover {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 18, 10, 0.72);
+}
+#gameover[hidden] { display: none; }
+#gameover .box {
+  text-align: center;
+  background: var(--night);
+  border: 2px solid rgba(253, 230, 178, 0.5);
+  border-radius: 12px;
+  padding: 28px 40px;
+  max-width: 90vw;
+}
+#gameover h1 { margin: 0 0 8px; font-size: 36px; color: #ff6b6b; }
+#gameover p { margin: 0 0 18px; color: var(--moon-dim); }
+#gameover button {
+  font: inherit;
+  font-size: 16px;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--accent);
+  color: var(--night);
+  cursor: pointer;
+}
+#gameover button:hover { filter: brightness(1.1); }
+#gameover button:focus-visible { outline: 3px solid var(--moon); outline-offset: 2px; }
+
+/* ---- Inventory / chest / cooking overlay ---- */
+#overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(30, 18, 10, 0.72);
+  z-index: 20;
+  flex-wrap: wrap;
+}
+#overlay[hidden] { display: none; }
+.panel-box {
+  background: var(--night);
+  border: 2px solid rgba(253, 230, 178, 0.5);
+  border-radius: 12px;
+  padding: 20px 24px;
+  min-width: 260px;
+  max-width: 92vw;
+}
+.panel-box[hidden] { display: none; }
+.inv-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.inv-header h2 { margin: 0; font-size: 20px; color: var(--moon); }
+#inv-coins { color: #f2c94c; font-weight: bold; font-size: 14px; }
+#chest-coins { color: var(--moon-dim); font-size: 13px; }
+
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 54px);
+  gap: 6px;
+}
+@media (max-width: 860px) { .inv-grid { grid-template-columns: repeat(5, 54px); } }
+.inv-slot {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+  background: rgba(243, 236, 200, 0.06);
+  border: 1px solid rgba(243, 236, 200, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+.inv-slot.filled { background: rgba(243, 236, 200, 0.1); cursor: grab; }
+.inv-slot.filled:active { cursor: grabbing; }
+.inv-slot.dragging { opacity: 0.35; }
+.inv-slot.drag-over { border-color: var(--accent); background: rgba(143, 211, 196, 0.22); transform: scale(1.06); }
+.inv-icon { width: 48px; height: 48px; display: block; pointer-events: none; }
+.inv-slot .inv-icon { width: 48px; height: 48px; }
+.inv-qty {
+  position: absolute;
+  bottom: 2px;
+  right: 5px;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--moon);
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+.inv-footer {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--moon-dim);
+  text-align: center;
+  max-width: 320px;
+}
+
+/* Floating icon that follows the cursor while dragging an item */
+.drag-ghost {
+  position: fixed;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 8px;
+  background: rgba(59, 38, 22, 0.6);
+  border: 1px solid rgba(253, 230, 178, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 30;
+  transition: transform 0.05s linear;
+}
+.drag-ghost .inv-icon { width: 36px; height: 36px; background-size: 36px 36px; }
+
+/* ---- Cooking panel ---- */
+#cook-list { display: flex; flex-direction: column; gap: 8px; min-width: 280px; }
+.cook-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(243, 236, 200, 0.06);
+}
+.cook-row .inv-icon { width: 36px; height: 36px; background-size: 36px 36px; }
+.cook-row.disabled { opacity: 0.5; }
+.cook-name { color: var(--moon); font-size: 14px; }
+.cook-cost { color: var(--moon-dim); font-size: 12px; white-space: nowrap; }
+.cook-btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 0;
+  background: var(--accent);
+  color: var(--night);
+  cursor: pointer;
+}
+.cook-btn:disabled { background: #6b5a4a; color: #a89580; cursor: not-allowed; }
+.cook-btn:not(:disabled):hover { filter: brightness(1.1); }
+
+/* ---- Toast (e.g. "Inventory Full") ---- */
+#toast {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: rgba(59, 38, 22, 0.95);
+  border: 1px solid rgba(243, 236, 200, 0.35);
+  color: var(--moon);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---- Shop-specific bits ---- */
+.shop-col-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--moon-dim);
+  margin: 10px 0 6px;
+}
+#shop-buy-list, #shop-sell-list, #travel-list { display: flex; flex-direction: column; gap: 6px; min-width: 300px; }
+.cook-empty { font-size: 13px; color: var(--moon-dim); padding: 6px 2px; }
+
+/* NPC dialogue box (bottom centre) */
+#dialog {
+  position: fixed;
+  left: 50%;
+  bottom: 56px;
+  transform: translateX(-50%);
+  width: min(640px, calc(100vw - 32px));
+  padding: 14px 18px 10px;
+  background: rgba(59, 38, 22, 0.96);
+  border: 3px solid #e8c66a;
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  z-index: 30;
+}
+#dialog[hidden] { display: none; }
+#dialog .dlg-name { color: #e8c66a; font-weight: bold; font-size: 17px; margin-bottom: 6px; }
+#dialog .dlg-text { color: var(--moon); font-size: 17px; line-height: 1.4; min-height: 48px; }
+#dialog .dlg-foot { color: var(--moon-dim); font-size: 12px; text-align: right; margin-top: 4px; }
+
+/* World mini-map (bottom right): 3x3 pages, lit = visited, ring = you are here */
+#worldmap {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  padding: 8px 10px 6px;
+  background: var(--panel);
+  border-radius: 8px;
+  pointer-events: none;
+  text-align: center;
+  z-index: 5;
+}
+#worldmap .wm-grid { display: grid; grid-template-columns: repeat(3, 18px); gap: 3px; justify-content: center; }
+#worldmap .wm-grid div { width: 18px; height: 14px; border-radius: 3px; background: rgba(243, 236, 200, 0.12); }
+#worldmap .wm-grid div.vis { background: rgba(143, 211, 196, 0.55); }
+#worldmap .wm-grid div.cur { background: #f2c94c; box-shadow: 0 0 0 2px rgba(242, 201, 76, 0.45); }
+#worldmap .wm-name { margin-top: 5px; font-size: 11px; color: var(--moon-dim); }
+#travel-list { max-height: 60vh; overflow-y: auto; }
+#travel-list small { color: var(--moon-dim); margin-left: 6px; }
+
+/* fast-travel rows: name (+ page) on the left, button on the right */
+#travel-list { min-width: 360px; }
+#travel-list .cook-row { grid-template-columns: 1fr auto; }
+#travel-list .cook-name small { display: block; margin: 2px 0 0; font-size: 12px; }
+
+/* ---- Pixel item icons (16px art from assets/fp, drawn x3) ---- */
+.inv-icon { background-repeat: no-repeat; background-position: center; background-size: 48px 48px; image-rendering: pixelated; }
+.item-axe .inv-icon, .inv-icon.item-axe { background-image: url(assets/fp/ic_axe.png); }
+.item-hoe .inv-icon, .inv-icon.item-hoe { background-image: url(assets/fp/ic_hoe.png); }
+.item-can .inv-icon, .inv-icon.item-can { background-image: url(assets/fp/ic_can.png); }
+.item-stick .inv-icon, .inv-icon.item-stick { background-image: url(assets/fp/ic_stick.png); }
+.item-sword .inv-icon, .inv-icon.item-sword { background-image: url(assets/fp/ic_sword.png); }
+.item-seeds .inv-icon, .inv-icon.item-seeds { background-image: url(assets/fp/ic_seeds.png); }
+.item-tomato_seeds .inv-icon, .inv-icon.item-tomato_seeds { background-image: url(assets/fp/ic_tomato_seeds.png); }
+.item-wheat .inv-icon, .inv-icon.item-wheat { background-image: url(assets/fp/ic_wheat.png); }
+.item-tomato .inv-icon, .inv-icon.item-tomato { background-image: url(assets/fp/ic_tomato.png); }
+.item-egg .inv-icon, .inv-icon.item-egg { background-image: url(assets/fp/ic_egg.png); }
+.item-wood .inv-icon, .inv-icon.item-wood { background-image: url(assets/fp/ic_wood.png); }
+.item-bread .inv-icon, .inv-icon.item-bread { background-image: url(assets/fp/ic_bread.png); }
+.item-fried_egg .inv-icon, .inv-icon.item-fried_egg { background-image: url(assets/fp/ic_fried_egg.png); }
+.item-stew .inv-icon, .inv-icon.item-stew { background-image: url(assets/fp/ic_stew.png); }
+.item-potion .inv-icon, .inv-icon.item-potion { background-image: url(assets/fp/ic_potion.png); }
+.item-gem .inv-icon, .inv-icon.item-gem { background-image: url(assets/fp/ic_gem.png); }
+.item-stone .inv-icon, .inv-icon.item-stone { background-image: url(assets/fp/ic_stone.png); }
+.item-flower .inv-icon, .inv-icon.item-flower { background-image: url(assets/fp/ic_flower.png); }
+.item-mushroom .inv-icon, .inv-icon.item-mushroom { background-image: url(assets/fp/ic_mushroom.png); }
+.item-plank .inv-icon, .inv-icon.item-plank { background-image: url(assets/fp/ic_plank.png); }
+.item-fiber .inv-icon, .inv-icon.item-fiber { background-image: url(assets/fp/ic_fiber.png); }
+
+/* ---- Wooden HUD panels ---- */
+.wood {
+  background: linear-gradient(180deg, #7a4d2b, #5e3a20);
+  border: 3px solid #3b2616;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px #a8693a, 0 3px 10px rgba(0,0,0,0.45);
+}
+#clock {
+  position: absolute; top: 12px; right: 12px; width: 158px; padding: 8px 10px 8px;
+  text-align: center; color: #fde6b2; font-weight: bold; text-shadow: 0 2px 0 #3b2616;
+}
+#clock .clock-top { display: flex; align-items: center; justify-content: center; gap: 8px; }
+#clock-wx { width: 40px; height: 40px; image-rendering: pixelated; }
+#clock-date { font-size: 17px; line-height: 1.1; }
+#clock-season { font-size: 13px; color: #f4bf57; }
+#clock-time { margin: 4px 0 6px; font-size: 22px; letter-spacing: 0.02em; background: #3b2616; border-radius: 5px; padding: 2px 0; color: #f7de7b; }
+.clock-gold { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 19px; color: #f4bf57; background: #3b2616; border-radius: 5px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+.coin { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1a8, #f4bf57 55%, #c68a1c); box-shadow: 0 0 0 2px #7a4d1a; }
+
+#hotbar {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  display: flex; gap: 3px; padding: 6px; pointer-events: auto;
+}
+.hb-slot {
+  position: relative; width: 52px; height: 52px; border-radius: 5px; cursor: pointer;
+  background: #8a5a35; border: 2px solid #3b2616; box-shadow: inset 0 0 0 2px #b0763f;
+  display: flex; align-items: center; justify-content: center;
+}
+.hb-slot.sel { background: #c99650; border-color: #fff1a8; box-shadow: inset 0 0 0 2px #f7de7b, 0 0 8px rgba(255,241,168,0.7); transform: translateY(-4px); }
+.hb-slot .inv-icon { width: 44px; height: 44px; background-size: 44px 44px; }
+.hb-key { position: absolute; top: 1px; left: 4px; font-size: 10px; font-weight: bold; color: #fde6b2; text-shadow: 0 1px 0 #3b2616; }
+.hb-slot .inv-qty { bottom: 1px; right: 4px; font-size: 13px; }
+@media (max-width: 700px) { .hb-slot { width: 30px; height: 30px; } .hb-slot .inv-icon { width: 28px; height: 28px; background-size: 28px 28px; } #hotbar { padding: 3px; } }
+
+#hint { bottom: 92px; background: rgba(59,38,22,0.9); color: #fde6b2; border-color: #e8c66a; }
+#controls { top: auto; bottom: 12px; left: 12px; max-width: 220px; font-size: 11px; line-height: 1.4; padding: 6px 9px; }
+@media (max-width: 1250px) { #controls { display: none; }}
+
+#energy {
+  position: absolute; right: 12px; bottom: 12px; width: 34px; height: 130px; padding: 4px; overflow: hidden;
+  display: flex; align-items: flex-end;
+}
+#energy-fill { width: 100%; height: 100%; background: #5cc94a; border-radius: 3px; transition: height 0.2s, background 0.3s; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.18); }
+.en-label { position: absolute; top: 4px; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: bold; color: #fde6b2; text-shadow: 0 1px 0 #3b2616; }
+#worldmap { right: 60px; bottom: 12px; background: var(--panel); border: 2px solid #3b2616; }
+#can-water {
+  position: absolute; left: 50%; bottom: 78px; transform: translateX(-50%); display: flex; gap: 6px; align-items: center;
+  padding: 3px 8px; font-size: 12px; background: rgba(59,38,22,0.9); border: 2px solid #3b2616; border-radius: 6px; color: #bfe4f5;
+}
+#can-water[hidden] { display: none; }
+.can-bar { width: 90px; height: 8px; background: #26160c; border-radius: 4px; overflow: hidden; }
+#can-fill { height: 100%; background: #63b6e5; width: 100%; transition: width 0.15s; }
+#hint { bottom: 112px; }
+
+#health { top: 12px; left: 12px; width: 190px; height: 20px; border: 3px solid #3b2616; background: #3b2616; border-radius: 6px; }
+#health-fill { background: linear-gradient(180deg, #e8645c, #c33f3a); }
+#coords { top: 42px; left: 12px; min-width: 0; font-size: 13px; padding: 3px 10px; background: transparent; border: 0; backdrop-filter: none; color: #fde6b2; text-shadow: 0 1px 2px #3b2616; font-weight: bold; }
+#coords:empty { display: none; }
+#dialog .dlg-name { color: #f4bf57; }
+#dialog { border-color: #e8c66a; background: linear-gradient(180deg, #6b4326, #4e3019); }
+
+/* confirm dialog (go to bed?) */
+#confirm { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(30,18,10,0.55); z-index: 35; }
+#confirm[hidden] { display: none; }
+#confirm .box { padding: 22px 28px; text-align: center; max-width: 90vw; }
+#confirm .cf-text { font-size: 19px; margin-bottom: 16px; color: #fde6b2; font-weight: bold; }
+#confirm .cf-btns { display: flex; gap: 12px; justify-content: center; }
+#confirm .cf-no { background: #c8b090; }
+.panel-box { background: linear-gradient(180deg, #6b4326, #4e3019); border: 3px solid #3b2616; box-shadow: inset 0 0 0 2px #a8693a, 0 8px 24px rgba(0,0,0,0.5); border-radius: 10px; }
+.inv-slot { background: rgba(30,18,10,0.35); border-color: rgba(30,18,10,0.7); }
+.inv-slot.filled { background: rgba(30,18,10,0.2); }
+#gameover .box { background: #4e3019; border-color: #e8c66a; }
+#gameover h1 { color: #f4bf57; }
+
+/* weapons + ammo icons */
+.item-dagger .inv-icon, .inv-icon.item-dagger { background-image: url(assets/fp/ic_dagger.png); }
+.item-steel_sword .inv-icon, .inv-icon.item-steel_sword { background-image: url(assets/fp/ic_steel_sword.png); }
+.item-spear .inv-icon, .inv-icon.item-spear { background-image: url(assets/fp/ic_spear.png); }
+.item-war_axe .inv-icon, .inv-icon.item-war_axe { background-image: url(assets/fp/ic_war_axe.png); }
+.item-bow .inv-icon, .inv-icon.item-bow { background-image: url(assets/fp/ic_bow.png); }
+.item-crossbow .inv-icon, .inv-icon.item-crossbow { background-image: url(assets/fp/ic_crossbow.png); }
+.item-pistol .inv-icon, .inv-icon.item-pistol { background-image: url(assets/fp/ic_pistol.png); }
+.item-shotgun .inv-icon, .inv-icon.item-shotgun { background-image: url(assets/fp/ic_shotgun.png); }
+.item-arrow .inv-icon, .inv-icon.item-arrow { background-image: url(assets/fp/ic_arrow.png); }
+.item-bolt .inv-icon, .inv-icon.item-bolt { background-image: url(assets/fp/ic_bolt.png); }
+.item-bullet .inv-icon, .inv-icon.item-bullet { background-image: url(assets/fp/ic_bullet.png); }
+.item-shell .inv-icon, .inv-icon.item-shell { background-image: url(assets/fp/ic_shell.png); }
+.cook-name small { display:block; font-size: 11px; opacity: .75; font-weight: normal; }

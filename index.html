@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Moonlight Valley</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game" aria-label="Moonlight Valley game world"></canvas>
+
+  <div id="hud">
+    <div id="coords"></div>
+    <div id="health"><div id="health-fill"></div><span id="health-text">HP 100 / 100</span></div>
+
+    <div id="clock" class="wood">
+      <div class="clock-top"><img id="clock-wx" alt="weather" src="assets/fp/wx_sun.png"><div><div id="clock-date">Mon. 1</div><div id="clock-season">Spring</div></div></div>
+      <div id="clock-time">6:00 am</div>
+      <div class="clock-gold"><span class="coin"></span><span id="gold">0</span></div>
+    </div>
+
+    <div id="energy" class="wood" title="Energy"><div id="energy-fill"></div><span class="en-label">E</span></div>
+    <div id="can-water" hidden title="Water left in the can"><span>Water</span><div class="can-bar"><div id="can-fill"></div></div></div>
+
+    <div id="hint" hidden></div>
+    <div id="hotbar" class="wood"></div>
+    <div id="controls">WASD move &nbsp;·&nbsp; 1-0 / wheel pick item &nbsp;·&nbsp; Space / click use &nbsp;·&nbsp; E talk / harvest / pick up &nbsp;·&nbsp; Q drop &nbsp;·&nbsp; I bag &nbsp;·&nbsp; C cook &nbsp;·&nbsp; T travel &nbsp;·&nbsp; M map &nbsp;·&nbsp; K kiss · H slap (co-op)</div>
+  </div>
+
+  <div id="worldmap" aria-label="World map">
+    <div class="wm-grid" id="wm-grid"></div>
+    <div class="wm-name" id="wm-name"></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <div id="dialog" hidden>
+    <div class="dlg-name"></div>
+    <div class="dlg-text"></div>
+    <div class="dlg-foot"></div>
+  </div>
+
+  <div id="confirm" hidden>
+    <div class="box wood">
+      <div class="cf-text">Are you sure?</div>
+      <div class="cf-btns">
+        <button class="cook-btn" id="cf-yes">Yes (Y)</button>
+        <button class="cook-btn cf-no" id="cf-no">No (N)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay" hidden>
+    <div id="inventory-box" class="panel-box" hidden>
+      <div class="inv-header">
+        <h2>Backpack</h2>
+        <span id="inv-coins">Coins: 0</span>
+      </div>
+      <div id="inv-grid" class="inv-grid"></div>
+      <div class="inv-footer">The top row is your hotbar &nbsp;·&nbsp; Drag to move/swap &nbsp;·&nbsp; Drag out of the bag to drop &nbsp;·&nbsp; Right-click food to eat &nbsp;·&nbsp; I or Esc to close</div>
+    </div>
+
+    <div id="chest-box" class="panel-box" hidden>
+      <div class="inv-header">
+        <h2>Chest</h2>
+        <span id="chest-coins">Chest</span>
+      </div>
+      <div id="chest-grid" class="inv-grid"></div>
+      <div class="inv-footer">Click or drag to move items</div>
+    </div>
+
+    <div id="cook-box" class="panel-box" hidden>
+      <div class="inv-header"><h2>Cooking</h2></div>
+      <div id="cook-list"></div>
+      <div class="inv-footer">Eating restores health and energy &nbsp;·&nbsp; C or Esc to close</div>
+    </div>
+
+    <div id="shop-box" class="panel-box" hidden>
+      <div class="inv-header">
+        <h2 id="shop-title">General Store</h2>
+        <span id="shop-coins">Coins: 0</span>
+      </div>
+      <div class="shop-col-title">Buy</div>
+      <div id="shop-buy-list"></div>
+      <div class="shop-col-title">Sell</div>
+      <div id="shop-sell-list"></div>
+      <div class="inv-footer">Esc to close</div>
+    </div>
+
+    <div id="travel-box" class="panel-box" hidden>
+      <div class="inv-header"><h2>Fast Travel</h2></div>
+      <div id="travel-list"></div>
+      <div class="inv-footer">Visit a way-point sign to unlock it &nbsp;·&nbsp; T or Esc to close</div>
+    </div>
+  </div>
+
+  <div id="gameover" hidden>
+    <div class="box">
+      <h1>You collapsed</h1>
+      <p>The skeletons got the better of you. Your farm, coins and crops are safe.</p>
+      <button id="restart">Wake up at home (R)</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+  <script src="fp.js"></script>
+  <script src="fpworld.js"></script>
+  <script src="homeart.js"></script>
+  <script src="home.js"></script>
+  <script src="map.js"></script>
+  <!-- co-op cinema: loaded after the home kit (it wraps Game / HomeKit) and before profile.js (which starts the game) -->
+  <script src="cinema/art.js"></script>
+  <script src="cinema/core.js"></script>
+  <script src="cinema/config.js"></script>
+  <script src="cinema/providers.js"></script>
+  <script src="cinema/gdrive.js"></script>
+  <script src="cinema/net.js"></script>
+  <script src="cinema/session.js"></script>
+  <script src="cinema/ui.js"></script>
+  <script src="cinema/room.js"></script>
+  <script src="cinema/emote_art.js"></script>
+  <script src="cinema/emote_core.js"></script>
+  <script src="cinema/emotes.js"></script>
+  <script src="profile.js"></script>
+</body>
+</html>
