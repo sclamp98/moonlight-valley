@@ -15,6 +15,7 @@ const CinemaUI = (() => {
   #cin-screen { position: fixed; z-index: 3; background: #000; overflow: hidden; pointer-events: none; border-radius: 2px; box-shadow: 0 0 40px rgba(120,160,255,.35); }
   #cin-screen[hidden] { display: none; }
   #cin-screen .cin-video, #cin-screen iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+  #cin-screen video.cin-html5::cue { background: rgba(0,0,0,.72); color: #fff; font: 600 clamp(13px, 2.4vw, 24px) "Trebuchet MS", sans-serif; }
   #cin-screen video.cin-html5 { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; pointer-events: none; }
   #cin-last { min-height: 16px; margin-top: 4px; font-size: 12px; color: #d9bd8c; }
   #cin-screen.theater { z-index: 37; left: 50%; top: 10px; transform: translateX(-50%); aspect-ratio: 16 / 9; height: auto;
@@ -136,7 +137,7 @@ const CinemaUI = (() => {
         <div id="cin-last" aria-live="polite"></div>
         <div class="cin-ctl"><button id="cin-play">▶ Play</button><button id="cin-pause" class="alt">❚❚ Pause</button><span id="cin-cur">0:00</span><input id="cin-seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek"><span id="cin-dur">--:--</span></div>
         <div class="cin-ctl2"><label>Volume <input id="cin-vol" type="range" min="0" max="100" value="80" aria-label="Volume"></label><button id="cin-mute" class="alt" title="Mute / unmute" aria-label="Mute">🔊</button>
-          <label>Speed <select id="cin-rate" aria-label="Playback speed"></select></label><span id="cin-who"></span></div>
+          <label>Speed <select id="cin-rate" aria-label="Playback speed"></select></label><button id="cin-sub" class="alt" title="Add subtitles from a .srt or .vtt file" hidden>CC Subtitles</button><button id="cin-sub-off" class="alt" title="Remove subtitles" aria-label="Remove subtitles" hidden>✕</button><input id="cin-sub-file" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden><span id="cin-who"></span></div>
         <div class="cin-actions"><button id="cin-gesture" hidden>▶ Click to join playback</button><button id="cin-signin" hidden>Sign in with Google</button><button id="cin-join" hidden>Join session</button><button id="cin-end" class="alt" hidden>End session</button><button id="cin-leave" class="alt" hidden>Leave session</button><button id="cin-close" class="alt">Close (Esc)</button></div>
         <div class="cin-foot">Either of you can play, pause, seek or change the video at any time; the newest action wins on both screens. Syncing is best-effort, not frame-perfect: connection speed, buffering and ads can leave you a second or two apart. Volume and fullscreen are yours alone.</div>
       </div>`);
@@ -265,6 +266,20 @@ const CinemaUI = (() => {
       q("#cin-rate").addEventListener("change", (e) => { sayErr(S().setRate(+e.target.value)); this.refresh(); });
       q("#cin-join").addEventListener("click", () => { S().join(); this.refresh(); });
       q("#cin-gesture").addEventListener("click", () => { S().resumeFromGesture(); this.refresh(); });
+      // subtitles (Drive videos): pick a .srt / .vtt; it plays with the video on THIS player only
+      q("#cin-sub").addEventListener("click", () => q("#cin-sub-file").click());
+      q("#cin-sub-off").addEventListener("click", () => { const a = S().adapter; if (a && a.clearSubtitles) a.clearSubtitles(); this.uiMsg = null; this.refresh(); });
+      q("#cin-sub-file").addEventListener("change", async (e) => {
+        const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+        const a = S().adapter; if (!a || !a.addSubtitles) return this.setMsg("Subtitles only work for Google Drive videos.", "err");
+        if (!/\.(srt|vtt)$/i.test(f.name)) return this.setMsg("Use a .srt or .vtt subtitle file (other formats like .ass or .sub aren't supported).", "err");
+        if (f.size > 2 * 1024 * 1024) return this.setMsg("That subtitle file is too big (over 2 MB). Is it really a subtitle file?", "err");
+        let buf; try { buf = await f.arrayBuffer(); } catch (x) { return this.setMsg("Couldn't read that file.", "err"); }
+        let text; try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch (x) { text = new TextDecoder("windows-1252").decode(buf); }   // older files are often not UTF-8
+        const vtt = C.srtToVtt(text); if (!vtt) return this.setMsg("Couldn't find any subtitles in that file. It should be a normal .srt or .vtt file.", "err");
+        const ad = S().adapter; if (!ad || !ad.addSubtitles) return this.setMsg("The video changed while the file was loading. Try again.", "err");
+        ad.addSubtitles(vtt, f.name.replace(/\.(srt|vtt)$/i, "")); this.uiMsg = null; this.refresh();
+      });
       q("#cin-signin").addEventListener("click", async () => { const r = await S().signIn(); sayErr(r); this.refresh(); });
       q("#cin-end").addEventListener("click", () => { sayErr(S().endSession()); this.refresh(); });
       q("#cin-leave").addEventListener("click", () => { S().leave(); this.refresh(); });
@@ -472,6 +487,7 @@ const CinemaUI = (() => {
       q("#cin-gesture").hidden = !i.needsGesture;
       q("#cin-join").hidden = !(i.active && !i.joined);
       q("#cin-signin").hidden = !i.needsAuth;
+      { const ad = s.adapter, can = !!(ad && ad.addSubtitles && i.joined), has = can && ad.hasSubtitles(); q("#cin-sub").hidden = !can; q("#cin-sub-off").hidden = !has; q("#cin-sub").textContent = has ? "CC " + String(ad.subLabel).slice(0, 18) : "CC Subtitles"; }
       q("#cin-end").hidden = !(i.active && i.joined);
       q("#cin-leave").hidden = !i.joined;
       q("#cin-who").textContent = i.title ? i.title.slice(0, 60) : "";

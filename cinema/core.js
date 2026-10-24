@@ -199,7 +199,24 @@ const CinemaCore = (() => {
     return { text, ts };
   }
 
-  const api = { SYNC, PLAYBACK, CMDS, RATES, YT_ID, DRIVE_ID, ID_RE, parseYouTube, parseDrive, parseStart, hostOf, NETMIRROR_RE, validateState, validateBeat, order, newerState, targetPosition, decideSeek, desiredAction, validatePos, validateChat, fmtTime, randomId, nearestRate };
+  /* ---------- subtitles: .srt / .vtt text -> WebVTT (or null if it has no usable cue) ---------- */
+  function srtToVtt(raw) {
+    const t = String(raw == null ? "" : raw).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").trim();
+    if (!t) return null;
+    const TS = "(?:(\\d{1,3}):)?(\\d{1,2}):(\\d{2})[,.](\\d{1,3})", RE = new RegExp("^\\s*" + TS + "\\s*-->\\s*" + TS);
+    const fmt = (h, m, s, ms) => `${String(h ? parseInt(h, 10) : 0).padStart(2, "0")}:${String(m).padStart(2, "0")}:${s}.${String(ms).padEnd(3, "0")}`;
+    const out = ["WEBVTT", ""]; let cues = 0;
+    for (const block of t.replace(/^WEBVTT[^\n]*\n/, "").split(/\n{2,}/)) {
+      const lines = block.split("\n"), i = lines.findIndex((l) => l.includes("-->")); if (i < 0) continue;
+      const m = RE.exec(lines[i]); if (!m) continue;
+      const text = lines.slice(i + 1).join("\n").replace(/\{\\[^}]*\}/g, "").replace(/-->/g, "->").trim();   // drop ASS-style {\an8} tags
+      if (!text) continue;
+      out.push(`${fmt(m[1], m[2], m[3], m[4])} --> ${fmt(m[5], m[6], m[7], m[8])}`, text, ""); cues++;
+    }
+    return cues ? out.join("\n") : null;
+  }
+
+  const api = { srtToVtt, SYNC, PLAYBACK, CMDS, RATES, YT_ID, DRIVE_ID, ID_RE, parseYouTube, parseDrive, parseStart, hostOf, NETMIRROR_RE, validateState, validateBeat, order, newerState, targetPosition, decideSeek, desiredAction, validatePos, validateChat, fmtTime, randomId, nearestRate };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   return api;
 })();
