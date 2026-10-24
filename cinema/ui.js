@@ -292,13 +292,14 @@ const CinemaUI = (() => {
       cq("#coop-close").addEventListener("click", () => this.closeCoop());
       cq("#coop-host").addEventListener("click", (e) => busy(e.target, async () => {
         cq("#coop-intro").hidden = true; cq("#coop-host-step").hidden = false; cmsg("Creating your invite…", "note");
-        cq("#coop-offer").value = await L().createInvite(); cmsg("Invite ready. Copy it and send it to your partner.", "note");
+        if (L().relay) this._relayLayout(true);
+        cq("#coop-offer").value = await L().createInvite(); cmsg(L().relay ? "Room ready. Copy the invite and send it to your partner. You connect as soon as they join." : "Invite ready. Copy it and send it to your partner.", "note");
       }));
-      cq("#coop-join").addEventListener("click", () => { cq("#coop-intro").hidden = true; cq("#coop-join-step").hidden = false; cmsg(""); cq("#coop-invite-in").focus(); });
+      cq("#coop-join").addEventListener("click", () => { cq("#coop-intro").hidden = true; cq("#coop-join-step").hidden = false; cmsg(""); if (L().relay) this._relayLayout(false); cq("#coop-invite-in").focus(); });
       cq("#coop-copy-offer").addEventListener("click", () => this._copy(cq("#coop-offer")));
       cq("#coop-copy-answer").addEventListener("click", () => this._copy(cq("#coop-answer")));
       cq("#coop-connect").addEventListener("click", (e) => busy(e.target, async () => { await L().acceptAnswer(cq("#coop-reply-in").value); cmsg("Connecting…", "note"); }));
-      cq("#coop-make-reply").addEventListener("click", (e) => busy(e.target, async () => { cmsg("Creating your reply…", "note"); cq("#coop-answer").value = await L().acceptInvite(cq("#coop-invite-in").value); cmsg("Reply ready. Copy it and send it back. You'll connect as soon as they paste it.", "note"); }));
+      cq("#coop-make-reply").addEventListener("click", (e) => busy(e.target, async () => { if (L().relay) { cmsg("Joining…", "note"); await L().acceptInvite(cq("#coop-invite-in").value); cmsg("Joined. Waiting for your partner if they aren't here yet.", "note"); return; } cmsg("Creating your reply…", "note"); cq("#coop-answer").value = await L().acceptInvite(cq("#coop-invite-in").value); cmsg("Reply ready. Copy it and send it back. You'll connect as soon as they paste it.", "note"); }));
       cq("#coop-diag").addEventListener("click", () => busy(cq("#coop-diag"), async () => {
         const txt = await L().reportText(), ta = document.createElement("textarea"); ta.value = txt; ta.style.cssText = "position:fixed;left:-9999px"; document.body.appendChild(ta);
         try { if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(txt); else { ta.select(); document.execCommand("copy"); } cmsg("Connection report copied. Paste it into a message.", "note"); } catch (e) { ta.select(); try { document.execCommand("copy"); cmsg("Connection report copied.", "note"); } catch (x) { cmsg("Couldn't copy automatically; see the browser console (Cinema.link.reportText()).", "err"); } }
@@ -312,7 +313,13 @@ const CinemaUI = (() => {
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, () => { ta.select(); document.execCommand && document.execCommand("copy"); done(); });
       else { ta.select(); try { document.execCommand("copy"); } catch (e) { /* user can copy by hand */ } done(); }
     }
-    _resetCoop() { const c = this.coop; $(c, "#coop-intro").hidden = false; $(c, "#coop-host-step").hidden = $(c, "#coop-join-step").hidden = true; for (const id of ["#coop-offer", "#coop-reply-in", "#coop-invite-in", "#coop-answer"]) $(c, id).value = ""; $(c, "#coop-msg").textContent = ""; }
+    // Relay mode has no reply code: hide that half of the panel (and put it back on reset).
+    _relayLayout(host) {
+      const c = this.coop, q = (s) => $(c, s);
+      if (host) { q("#coop-reply-in").closest("label").hidden = true; q("#coop-connect").closest(".cin-actions").hidden = true; q("#coop-offer").closest("label").firstChild.textContent = "Send this invite code to your partner. They paste it to join: "; }
+      else { q("#coop-answer").closest("label").hidden = true; q("#coop-copy-answer").closest(".cin-actions").hidden = true; q("#coop-make-reply").textContent = "Join"; q("#coop-invite-in").closest("label").firstChild.textContent = "Paste the invite code from your partner: "; }
+    }
+    _resetCoop() { const c = this.coop; for (const s of ["#coop-reply-in", "#coop-answer"]) $(c, s).closest("label").hidden = false; for (const s of ["#coop-connect", "#coop-copy-answer"]) $(c, s).closest(".cin-actions").hidden = false; $(c, "#coop-make-reply").textContent = "Create reply"; $(c, "#coop-offer").closest("label").firstChild.textContent = "1. Send this invite code to your partner"; $(c, "#coop-invite-in").closest("label").firstChild.textContent = "1. Paste the invite code from your partner"; $(c, "#coop-intro").hidden = false; $(c, "#coop-host-step").hidden = $(c, "#coop-join-step").hidden = true; for (const id of ["#coop-offer", "#coop-reply-in", "#coop-invite-in", "#coop-answer"]) $(c, id).value = ""; $(c, "#coop-msg").textContent = ""; }
 
     /* ---------- open / close ---------- */
     open() {
@@ -490,10 +497,11 @@ const CinemaUI = (() => {
     refreshCoop() {
       const L = this.getLink(), c = this.coop, cq = (s) => $(c, s), st = L.state, chip = cq("#coop-state");
       const names = { idle: ["Not connected", ""], offering: ["Waiting for reply", "wait"], answering: ["Waiting for partner", "wait"], connecting: ["Connecting", "wait"], open: ["Connected", "play"], reconnecting: ["Reconnecting", "pause"], failed: ["Disconnected", "error"], closed: ["Not connected", ""] };
+      if (L.relay) { names.offering = ["Waiting for partner", "wait"]; names.answering = ["Waiting for partner", "wait"]; cq("#coop-intro .cin-note").textContent = "Play together over the internet: no matter which Wi-Fi each of you is on. One of you makes an invite and sends it; the other pastes it to join."; }
       const n = names[st] || names.idle; chip.textContent = n[0]; chip.className = "cin-chip " + n[1];
       const live = st === "open" || st === "reconnecting";
       cq("#coop-live").hidden = !live; if (live) { cq("#coop-intro").hidden = true; cq("#coop-host-step").hidden = cq("#coop-join-step").hidden = true; }
-      cq("#coop-live-text").textContent = L.peer ? `You're linked with ${L.peer.name}${L.rtt != null ? ` · ${Math.round(L.rtt)} ms` : ""}. ${L.detail || ""}` : "Linked.";
+      cq("#coop-live-text").textContent = L.peer ? `You're linked with ${L.peer.name}${L.rtt != null ? ` · ${Math.round(L.rtt)} ms` : ""}. ${L.detail || ""}` : (L.relay && L.detail ? L.detail : "Linked.");
       if (!live && (st === "failed") && L.detail) { const m = cq("#coop-msg"); m.textContent = L.detail + " Create a new invite to reconnect."; m.className = "cin-msg err"; if (cq("#coop-intro").hidden === true && cq("#coop-host-step").hidden && cq("#coop-join-step").hidden) { cq("#coop-intro").hidden = false; } }
       if (!live && (st === "connecting" || st === "answering") && /Still trying/.test(L.detail || "")) { const m = cq("#coop-msg"); m.textContent = L.detail; m.className = "cin-msg err"; }
       this.refreshBadge();

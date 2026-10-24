@@ -172,7 +172,7 @@ const Cinema = (() => {
     ensure(game) {
       if (this.ui) return this;
       self.name = CONFIG.PLAYER_NAME || "Farmer"; self.gender = CONFIG.PLAYER_CHARACTER === "female" ? "female" : "male";
-      this.link = new CoopLink.Link(self);
+      this.link = typeof CoopRelay !== "undefined" ? CoopRelay.make(self) : new CoopLink.Link(self);   // relay (Ably) on a real website, direct WebRTC on localhost
       this.ui = new CinemaUI.UI({ getSession: () => this.session, getLink: () => this.link, where: () => this.whereText(), onClosed: () => {} });
       this.session = new CinemaSession.Session({ self, container: this.ui.video, notify: (t) => game.showMessage(t, 3400) });
       this.session.setLink(this.link);
