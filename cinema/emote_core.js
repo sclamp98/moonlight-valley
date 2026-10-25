@@ -13,7 +13,11 @@ const EmoteCore = (() => {
   const KINDS = {
     kiss: { key: "k", label: "Kiss", actor: null },        // any couple (one man + one woman)
     slap: { key: "h", label: "Slap", actor: "male" },      // only the man starts it, on the woman
+    hug: { key: "u", label: "Hug", actor: null },          // any couple
+    grab: { key: "g", label: "Grab", actor: "male", needs: "kneeling" },   // the man, on a woman who is kneeling (and finished tying her hair)
   };
+  const SOLO = { kneel: { key: "j", label: "Kneel", actor: "female" } };   // the woman alone; the same key stands her up again
+  const KNEEL_WAIT_S = 5;    // she has to stay down this long (after the hair is tied) before the "stand up" option appears
   const KIND_NAMES = Object.keys(KINDS);
   const MSG = {
     nopartner: "Connect with your partner first (co-op button).",
@@ -24,6 +28,10 @@ const EmoteCore = (() => {
     busy: "Not right now - stand up / close what's open first.",
     theirbusy: "Your partner can't right now.",
     space: "Not enough room here - move away from the furniture.",
+    notkneel: "She has to be kneeling first.",
+    notready: "Wait - she isn't ready yet.",
+    kneeling: "Not while someone is kneeling.",
+    kneelactor: "Only the woman can kneel.",
   };
 
   const dist = (a, b) => Math.hypot(a.cx - b.cx, a.cy - b.cy);
@@ -37,8 +45,20 @@ const EmoteCore = (() => {
     if (!st.sameRoom) return { ok: false, why: "room", msg: MSG.room };
     if (me.gender === partner.gender) return { ok: false, why: "pair", msg: MSG.pair };
     if (K.actor && me.gender !== K.actor) return { ok: false, why: "actor", msg: MSG.actor };
+    if (K.needs === "kneeling") {
+      if (!st.partnerKneeling) return { ok: false, why: "notkneel", msg: MSG.notkneel };
+      if (!st.partnerKneelHold) return { ok: false, why: "notready", msg: MSG.notready };      // still getting down / tying her hair
+    } else if (st.partnerKneeling || st.meKneeling) return { ok: false, why: "kneeling", msg: MSG.kneeling };
     if (st.busy) return { ok: false, why: "busy", msg: MSG.busy };
     if (dist(me, partner) > RANGE) return { ok: false, why: "far", msg: MSG.far };
+    return { ok: true };
+  }
+
+  /* May `me` kneel? (solo: no partner needed). st: { busy, active, meKneeling } */
+  function checkKneel(me, st) {
+    if (me.gender !== SOLO.kneel.actor) return { ok: false, why: "actor", msg: MSG.kneelactor };
+    if (st.active || st.meKneeling) return { ok: false, silent: true, why: "active" };
+    if (st.busy) return { ok: false, why: "busy", msg: MSG.busy };
     return { ok: true };
   }
 
@@ -69,10 +89,12 @@ const EmoteCore = (() => {
     kiss: (flip) => ({ female: flip ? "left" : "right", male: flip ? "right" : "left" }),
     slap: () => ({ female: "up", male: "down" }),
   };
+  FINAL.hug = FINAL.kiss; FINAL.grab = FINAL.kiss;
   const GLIDE_FACE = {                  // facing while walking to the spots
     kiss: FINAL.kiss,
     slap: () => ({ female: "up", male: "up" }),
   };
+  GLIDE_FACE.hug = FINAL.kiss; GLIDE_FACE.grab = FINAL.kiss;
 
   const frameAt = (times, t) => { let lo = 0, hi = times.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (times[m] <= t) lo = m; else hi = m - 1; } return lo; };
   const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -80,13 +102,26 @@ const EmoteCore = (() => {
   /* One emote on a shared timeline (seconds since it began; negative = still waiting for the start).
      phase: wait | glide | play | done.   duoA = opacity of the pair animation, realA = opacity of the two normal sprites. */
   function timeline(art, t) {
-    const total = GLIDE_S + art.dur;
+    const total = GLIDE_S + art.dur, F = art.fade === undefined ? FADE_S : art.fade;
     if (t < 0) return { phase: "wait", u: 0, frame: 0, duoA: 0, realA: 1, total };
     if (t < GLIDE_S) return { phase: "glide", u: t / GLIDE_S, frame: 0, duoA: 0, realA: 1, total };
     if (t >= total) return { phase: "done", u: 1, frame: art.n - 1, duoA: 0, realA: 1, total };
     const pt = t - GLIDE_S;
-    const duoA = Math.min(clamp01(pt / FADE_S), clamp01((art.dur - pt) / FADE_S));
-    return { phase: "play", u: 1, frame: frameAt(art.t, pt), duoA, realA: 1 - duoA, pt, atEnd: pt > art.dur - FADE_S, total };
+    const duoA = Math.min(clamp01(pt / F), clamp01((art.dur - pt) / F));
+    return { phase: "play", u: 1, frame: frameAt(art.t, pt), duoA, realA: 1 - duoA, pt, atEnd: pt > art.dur - F, total };
+  }
+
+  /* The woman kneeling (solo clip EMOTE_ART.knee). t = seconds since she started; upT = seconds-since-start when she was told to stand (or null).
+     a = opacity of the kneeling pose (the normal sprite gets 1 - a).  The stand-up plays the first `drop` frames backwards. */
+  function kneelTimeline(art, t, upT) {
+    if (upT === null || upT === undefined) {
+      const hold = t >= art.dur;
+      return { phase: hold ? "hold" : "in", frame: hold ? art.n - 1 : frameAt(art.t, Math.max(0, t)), a: clamp01(t / FADE_S), canStand: t >= art.dur + KNEEL_WAIT_S, left: Math.max(0, art.dur + KNEEL_WAIT_S - t) };
+    }
+    const u = t - upT;
+    if (u >= art.upDur + FADE_S) return { phase: "gone", frame: 0, a: 0, canStand: false, left: 0 };
+    const frame = Math.round((art.drop - 1) * (1 - clamp01(u / art.upDur)));
+    return { phase: "up", frame, a: u < art.upDur ? 1 : 1 - (u - art.upDur) / FADE_S, canStand: false, left: 0 };
   }
 
   const ease = (u) => u * u * (3 - 2 * u);
@@ -95,7 +130,8 @@ const EmoteCore = (() => {
   const ID_RE = /^[a-z0-9]{4,16}$/i;
   function validateMsg(o) {
     if (!o || typeof o !== "object" || !ID_RE.test(o.id || "")) return null;
-    if (o.a === "stop") return { a: "stop", id: o.id };
+    if (o.a === "stop" || o.a === "up") return { a: o.a, id: o.id };
+    if (o.a === "knee") return typeof o.el === "number" && isFinite(o.el) && o.el >= 0 && o.el < 3600 ? { a: "knee", id: o.id, fl: !!o.fl, el: o.el } : null;
     if (o.a === "no") return { a: "no", id: o.id, why: typeof o.why === "string" ? o.why.slice(0, 16) : "busy" };
     if (o.a !== "go" || !KINDS[o.k]) return null;
     const num = (v, lim) => typeof v === "number" && isFinite(v) && Math.abs(v) <= lim;
@@ -108,7 +144,7 @@ const EmoteCore = (() => {
 
   const randomId = () => Math.random().toString(36).slice(2, 10).padEnd(8, "0");
 
-  const api = { RANGE, ACCEPT_RANGE, LEAD_MS, GLIDE_S, FADE_S, KINDS, KIND_NAMES, MSG, check, chooseFlip, layout, pickAnchor, FINAL, GLIDE_FACE, frameAt, timeline, ease, validateMsg, winsTie, randomId, dist };
+  const api = { SOLO, KNEEL_WAIT_S, checkKneel, kneelTimeline, RANGE, ACCEPT_RANGE, LEAD_MS, GLIDE_S, FADE_S, KINDS, KIND_NAMES, MSG, check, chooseFlip, layout, pickAnchor, FINAL, GLIDE_FACE, frameAt, timeline, ease, validateMsg, winsTie, randomId, dist };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   return api;
 })();

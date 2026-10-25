@@ -15,6 +15,7 @@ const CinemaUI = (() => {
   #cin-screen { position: fixed; z-index: 3; background: #000; overflow: hidden; pointer-events: none; border-radius: 2px; box-shadow: 0 0 40px rgba(120,160,255,.35); }
   #cin-screen[hidden] { display: none; }
   #cin-screen .cin-video, #cin-screen iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+  #cin-screen video.cin-html5::cue { background: rgba(0,0,0,.72); color: #fff; font: 600 clamp(13px, 2.4vw, 24px) "Trebuchet MS", sans-serif; }
   #cin-screen video.cin-html5 { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; pointer-events: none; }
   #cin-last { min-height: 16px; margin-top: 4px; font-size: 12px; color: #d9bd8c; }
   #cin-screen.theater { z-index: 37; left: 50%; top: 10px; transform: translateX(-50%); aspect-ratio: 16 / 9; height: auto;
@@ -86,6 +87,20 @@ const CinemaUI = (() => {
   #cin-fs-exit[hidden] { display: none; } #cin-fs-exit:hover { background: rgba(40,28,20,.9); }
   #cin-fs, #cin-chat-btn { padding: 6px 10px; font-size: 15px; line-height: 1; }
 
+  /* ---- chat shortcut button, message pop-ups and on-screen feedback: all live inside #cin-stage, so they also show in fullscreen ---- */
+  #chat-fab { position: fixed; top: 104px; left: 12px; z-index: 6; display: none; cursor: pointer; font: bold 12px 'Trebuchet MS', sans-serif; padding: 4px 9px; border-radius: 6px; border: 2px solid #3b2616; background: rgba(78,48,25,.88); color: #fde6b2; }
+  #chat-fab.show { display: block; } #chat-fab:hover { background: #6b4326; }
+  #chat-fab .badge { display: inline-block; margin-left: 6px; min-width: 16px; padding: 0 5px; border-radius: 9px; background: #d9534f; color: #fff; font-size: 11px; text-align: center; }
+  #chat-fab .badge[hidden] { display: none; }
+  #cin-stage.cin-fs #chat-fab { opacity: .6; } #cin-stage.cin-fs #chat-fab:hover { opacity: 1; }
+  #cin-toasts { position: fixed; z-index: 45; top: 12px; left: 50%; transform: translateX(-50%); width: min(88vw, 560px); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+  .cin-toast { pointer-events: auto; cursor: pointer; max-width: 100%; box-sizing: border-box; padding: 8px 14px; border-radius: 10px; background: rgba(15,10,6,.55); border: 1px solid rgba(255,255,255,.3); color: #fff;
+    font: 600 14px/1.35 'Trebuchet MS', sans-serif; text-shadow: 0 1px 3px #000; box-shadow: 0 2px 14px rgba(0,0,0,.45); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity .4s; }
+  .cin-toast b { color: #ffd77a; } .cin-toast.out { opacity: 0; }
+  #cin-osd { position: fixed; z-index: 44; top: 16%; left: 50%; transform: translateX(-50%); padding: 8px 18px; border-radius: 10px; background: rgba(0,0,0,.55); color: #fff; font: 700 18px 'Trebuchet MS', sans-serif; text-shadow: 0 1px 3px #000; pointer-events: none; opacity: 0; transition: opacity .2s; }
+  #cin-osd.on { opacity: 1; }
+
   /* ---- chat panel ---- */
   #cin-chat { position: fixed; z-index: 40; top: 10px; right: 10px; bottom: 10px; width: 300px; max-width: 92vw;
     background: rgba(20,14,10,.95); border: 2px solid #3b2616; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,.6);
@@ -136,7 +151,7 @@ const CinemaUI = (() => {
         <div id="cin-last" aria-live="polite"></div>
         <div class="cin-ctl"><button id="cin-play">▶ Play</button><button id="cin-pause" class="alt">❚❚ Pause</button><span id="cin-cur">0:00</span><input id="cin-seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek"><span id="cin-dur">--:--</span></div>
         <div class="cin-ctl2"><label>Volume <input id="cin-vol" type="range" min="0" max="100" value="80" aria-label="Volume"></label><button id="cin-mute" class="alt" title="Mute / unmute" aria-label="Mute">🔊</button>
-          <label>Speed <select id="cin-rate" aria-label="Playback speed"></select></label><span id="cin-who"></span></div>
+          <label>Speed <select id="cin-rate" aria-label="Playback speed"></select></label><button id="cin-sub" class="alt" title="Add subtitles from a .srt or .vtt file" hidden>CC Subtitles</button><button id="cin-sub-off" class="alt" title="Remove subtitles" aria-label="Remove subtitles" hidden>✕</button><input id="cin-sub-file" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden><span id="cin-who"></span></div>
         <div class="cin-actions"><button id="cin-gesture" hidden>▶ Click to join playback</button><button id="cin-signin" hidden>Sign in with Google</button><button id="cin-join" hidden>Join session</button><button id="cin-end" class="alt" hidden>End session</button><button id="cin-leave" class="alt" hidden>Leave session</button><button id="cin-close" class="alt">Close (Esc)</button></div>
         <div class="cin-foot">Either of you can play, pause, seek or change the video at any time; the newest action wins on both screens. Syncing is best-effort, not frame-perfect: connection speed, buffering and ads can leave you a second or two apart. Volume and fullscreen are yours alone.</div>
       </div>`);
@@ -176,12 +191,15 @@ const CinemaUI = (() => {
       // first. Putting them in the same wrapper is all that's needed; it doesn't change how or where they
       // appear outside of fullscreen (the wrapper has no layout effect of its own).
       this.stage = el(`<div id="cin-stage"></div>`);
-      this.stage.append(this.screen, this.panel, this.chat, this.fsExit, this.coop, this.btn);
+      this.fab = el(`<button id="chat-fab" title="Chat with your partner" aria-label="Open chat">💬 Chat<span class="badge" hidden>0</span></button>`);
+      this.toasts = el(`<div id="cin-toasts" aria-live="polite"></div>`);
+      this.osd = el(`<div id="cin-osd" aria-live="polite"></div>`);
+      this.stage.append(this.screen, this.panel, this.chat, this.fsExit, this.coop, this.btn, this.fab, this.toasts, this.osd);
       document.body.append(this.stage);
       this.fsExit.addEventListener("click", () => this._exitFullscreen());
       for (const r of [1, 0.5, 0.75, 1.25, 1.5, 2].sort((a, b) => a - b)) { const o = document.createElement("option"); o.value = r; o.textContent = r + "x"; if (r === 1) o.selected = true; $(this.panel, "#cin-rate").appendChild(o); }
 
-      this.chatOpen = false; this.chatMsgs = []; this._fsHandler = () => this._onFsChange();
+      this._unread = 0; this.chatOpen = false; this.chatMsgs = []; this._fsHandler = () => this._onFsChange();
       for (const ev of ["fullscreenchange", "webkitfullscreenchange"]) document.addEventListener(ev, this._fsHandler);
 
       this._wire();
@@ -201,7 +219,7 @@ const CinemaUI = (() => {
       // with bubble-phase listeners on each panel itself (below) — those run *after* the focused element's own
       // handler, once the event bubbles back out past the panel, so typing still works but never leaks out.
       this._kd = (e) => {
-        if (!this.cinOpen && !this.coopOpen) return;
+        if (!this.cinOpen && !this.coopOpen && !this.chatOpen) return;
         if (e.key === "Escape") {
           e.preventDefault(); e.stopPropagation();
           // Fullscreen gets this Escape to itself, and nothing else happens in the same press. Relying on the
@@ -222,6 +240,25 @@ const CinemaUI = (() => {
         }
       };
       window.addEventListener("keydown", this._kd, true);
+      // Watching shortcuts: ← → seek 5 s (Shift: 15 s), ↑ ↓ volume, Space play / pause. Only while a video is joined AND you are
+      // clearly watching it (panel open, fullscreen, or sitting on the sofa), never while typing, so walking around is unaffected.
+      this._ks = (e) => {
+        const k = e.key; if (!(k === "ArrowLeft" || k === "ArrowRight" || k === "ArrowUp" || k === "ArrowDown" || k === " ")) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const t = e.target, tag = t && t.tagName; if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+        const s = this.getSession(), i = s.info(), g = window.game;
+        if (!(i.active && i.joined && (this.cinOpen || this._fsOn || (g && g.sitting)))) return;
+        e.preventDefault(); e.stopImmediatePropagation(); if (tag === "BUTTON") t.blur();
+        if (k === " ") { if (e.repeat) return; const playing = i.state && i.state.playback === "playing"; const r = playing ? s.pause() : s.play(); if (!r || r.ok !== false) this._showOsd(playing ? "⏸ Paused" : "▶ Playing"); }
+        else if (k === "ArrowUp" || k === "ArrowDown") { const v = Math.max(0, Math.min(100, Math.round(i.volume) + (k === "ArrowUp" ? 5 : -5))); s.setVolume(v); this._showOsd((v === 0 ? "🔇 " : "🔊 ") + v + "%"); }
+        else {
+          const now = performance.now(), d = (k === "ArrowRight" ? 1 : -1) * (e.shiftKey ? 15 : 5), base = this._kbT != null && now - this._kbAt < 800 ? this._kbT : i.time;   // quick repeats build on the last target
+          const to = Math.max(0, Math.min(i.duration || 1e9, base + d)); this._kbT = to; this._kbAt = now;
+          const r = s.seek(to); if (!r || r.ok !== false) this._showOsd((d > 0 ? "⏩ " : "⏪ ") + C.fmtTime(to) + (i.duration ? " / " + C.fmtTime(i.duration) : ""));
+        }
+        this.refresh();
+      };
+      window.addEventListener("keydown", this._ks, true);
       for (const n of [this.panel, this.coop, this.chat]) {
         n.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
         n.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -265,6 +302,20 @@ const CinemaUI = (() => {
       q("#cin-rate").addEventListener("change", (e) => { sayErr(S().setRate(+e.target.value)); this.refresh(); });
       q("#cin-join").addEventListener("click", () => { S().join(); this.refresh(); });
       q("#cin-gesture").addEventListener("click", () => { S().resumeFromGesture(); this.refresh(); });
+      // subtitles (Drive videos): pick a .srt / .vtt; it plays with the video on THIS player only
+      q("#cin-sub").addEventListener("click", () => q("#cin-sub-file").click());
+      q("#cin-sub-off").addEventListener("click", () => { const a = S().adapter; if (a && a.clearSubtitles) a.clearSubtitles(); this.uiMsg = null; this.refresh(); });
+      q("#cin-sub-file").addEventListener("change", async (e) => {
+        const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+        const a = S().adapter; if (!a || !a.addSubtitles) return this.setMsg("Subtitles only work for Google Drive videos.", "err");
+        if (!/\.(srt|vtt)$/i.test(f.name)) return this.setMsg("Use a .srt or .vtt subtitle file (other formats like .ass or .sub aren't supported).", "err");
+        if (f.size > 2 * 1024 * 1024) return this.setMsg("That subtitle file is too big (over 2 MB). Is it really a subtitle file?", "err");
+        let buf; try { buf = await f.arrayBuffer(); } catch (x) { return this.setMsg("Couldn't read that file.", "err"); }
+        let text; try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch (x) { text = new TextDecoder("windows-1252").decode(buf); }   // older files are often not UTF-8
+        const vtt = C.srtToVtt(text); if (!vtt) return this.setMsg("Couldn't find any subtitles in that file. It should be a normal .srt or .vtt file.", "err");
+        const ad = S().adapter; if (!ad || !ad.addSubtitles) return this.setMsg("The video changed while the file was loading. Try again.", "err");
+        ad.addSubtitles(vtt, f.name.replace(/\.(srt|vtt)$/i, "")); this.uiMsg = null; this.refresh();
+      });
       q("#cin-signin").addEventListener("click", async () => { const r = await S().signIn(); sayErr(r); this.refresh(); });
       q("#cin-end").addEventListener("click", () => { sayErr(S().endSession()); this.refresh(); });
       q("#cin-leave").addEventListener("click", () => { S().leave(); this.refresh(); });
@@ -272,6 +323,8 @@ const CinemaUI = (() => {
       q("#cin-x").addEventListener("click", () => this.close());
       q("#cin-fs").addEventListener("click", () => this.toggleFullscreen());
       q("#cin-chat-btn").addEventListener("click", () => this.toggleChat());
+      this.fab.addEventListener("click", () => { this.toggleChat(); });
+      for (const n of [this.fab, this.toasts]) { n.addEventListener("mousedown", (e) => e.stopPropagation()); n.addEventListener("keydown", (e) => e.stopPropagation()); }
 
       // chat panel
       const ch = this.chat, chq = (s) => $(ch, s);
@@ -391,14 +444,15 @@ const CinemaUI = (() => {
     toggleChat() { this.chatOpen ? this.closeChat() : this.openChat(); }
     openChat() {
       if (this.chatOpen) return;
-      this.chatOpen = true; this.chat.hidden = false;
+      this.chatOpen = true; this.chat.hidden = false; this._unread = 0; this._updateFab(); this.toasts.textContent = "";
+      const g = window.game; if (g && g.input) { g.input.down.clear(); g.input.pressed.clear(); }
       const q = (s) => $(this.chat, s); q("#cin-chat-list").scrollTop = q("#cin-chat-list").scrollHeight;
       setTimeout(() => q("#cin-chat-input").focus(), 0);
       this._refreshChatStatus();
     }
     closeChat() {
       if (!this.chatOpen) return;
-      this.chatOpen = false; this.chat.hidden = true;
+      this.chatOpen = false; this.chat.hidden = true; this._updateFab();
       if (document.activeElement && this.chat.contains(document.activeElement)) document.activeElement.blur();
     }
     _refreshChatStatus() {
@@ -429,6 +483,21 @@ const CinemaUI = (() => {
       row.append(bubble, meta); list.appendChild(row);
       this.chatMsgs.push({ mine, name, text, ts, failed }); if (this.chatMsgs.length > 300) { this.chatMsgs.shift(); if (list.firstChild) list.firstChild.remove(); }
       list.scrollTop = list.scrollHeight;
+      if (!mine && !this.chatOpen) { this._unread++; this._updateFab(); this._toast(name || "Partner", text); }
+    }
+    // A see-through pop-up at the top of the screen (also in fullscreen). Click it to open the chat on the side.
+    _toast(name, text) {
+      const d = document.createElement("div"); d.className = "cin-toast"; d.setAttribute("role", "status");
+      const b = document.createElement("b"); b.textContent = name + ": "; d.append(b, document.createTextNode(String(text).slice(0, 140)));
+      d.addEventListener("click", () => { d.remove(); this.openChat(); });
+      this.toasts.appendChild(d); while (this.toasts.children.length > 3) this.toasts.firstChild.remove();
+      setTimeout(() => { d.classList.add("out"); setTimeout(() => d.remove(), 450); }, 6000);
+    }
+    _showOsd(text) { this.osd.textContent = text; this.osd.classList.add("on"); clearTimeout(this._osdT); this._osdT = setTimeout(() => this.osd.classList.remove("on"), 1000); }
+    _updateFab() {
+      const L = this.getLink(), linked = !!L && (L.state === "open" || L.state === "reconnecting"), badge = $(this.fab, ".badge");
+      this.fab.classList.toggle("show", linked || this.chatOpen);
+      badge.hidden = !this._unread; badge.textContent = this._unread > 9 ? "9+" : String(this._unread);
     }
 
     /* ---------- the video on the TV ---------- */
@@ -472,6 +541,7 @@ const CinemaUI = (() => {
       q("#cin-gesture").hidden = !i.needsGesture;
       q("#cin-join").hidden = !(i.active && !i.joined);
       q("#cin-signin").hidden = !i.needsAuth;
+      { const ad = s.adapter, can = !!(ad && ad.addSubtitles && i.joined), has = can && ad.hasSubtitles(); q("#cin-sub").hidden = !can; q("#cin-sub-off").hidden = !has; q("#cin-sub").textContent = has ? "CC " + String(ad.subLabel).slice(0, 18) : "CC Subtitles"; }
       q("#cin-end").hidden = !(i.active && i.joined);
       q("#cin-leave").hidden = !i.joined;
       q("#cin-who").textContent = i.title ? i.title.slice(0, 60) : "";
@@ -508,15 +578,16 @@ const CinemaUI = (() => {
     }
     refreshBadge() {
       const L = this.getLink(), st = L.state, b = this.btn, lbl = $(b, ".lbl");
+      if (this.fab) { this._updateFab(); this._refreshChatStatus(); }
       b.className = st === "open" ? "on" : st === "reconnecting" ? "warn" : st === "failed" ? "off" : "";
       const w = this.where();
       lbl.textContent = st === "open" || st === "reconnecting" ? `${L.peer ? L.peer.name : "Partner"}${w ? " · " + w : ""}${st === "reconnecting" ? " (reconnecting)" : ""}` : st === "failed" ? "Co-op: disconnected" : "Co-op";
     }
     destroy() {
-      window.removeEventListener("keydown", this._kd, true); window.removeEventListener("pointerup", this._pu); window.removeEventListener("pointercancel", this._pu);
+      window.removeEventListener("keydown", this._kd, true); window.removeEventListener("keydown", this._ks, true); clearTimeout(this._osdT); window.removeEventListener("pointerup", this._pu); window.removeEventListener("pointercancel", this._pu);
       for (const ev of ["fullscreenchange", "webkitfullscreenchange"]) document.removeEventListener(ev, this._fsHandler);
       clearInterval(this._timer); clearInterval(this._ct);
-      for (const n of [this.stage, this.coop, this.btn]) n.remove();
+      for (const n of [this.stage, this.coop, this.btn, this.fab, this.toasts, this.osd]) n.remove();
     }
   }
   return { UI };
