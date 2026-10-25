@@ -190,7 +190,7 @@ const CinemaDrive = (() => {
     }
     async load(videoId, { start = 0, autoplay = false, interactive = false } = {}) {
       if (!C.DRIVE_ID.test(videoId || "")) throw new DriveError("invalid", "Invalid Drive file id.");
-      const seq = ++this.seq; this.fileId = videoId; this.started = false; this.fatal = false; this.meta = null;
+      const seq = ++this.seq; this.fileId = videoId; this.started = false; this.fatal = false; this.meta = null; this.clearSubtitles();   // subtitles belong to one video
       const v = this.v; v.pause(); v.removeAttribute("src"); v.load();
       let token, meta;
       try { token = await getToken({ interactive }); meta = await fetchMeta(videoId, token); }
@@ -202,6 +202,17 @@ const CinemaDrive = (() => {
       v.src = streamUrl(videoId);
       if (autoplay) this.play();
     }
+    // Subtitles from a file the player picked (already converted to WebVTT). They live in this browser only and are drawn by the <video> itself, so they follow play / pause / seek and fullscreen.
+    addSubtitles(vtt, label) {
+      this.clearSubtitles();
+      const url = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" })), tr = document.createElement("track");
+      tr.kind = "subtitles"; tr.label = String(label || "Subtitles").slice(0, 60); tr.srclang = "und"; tr.src = url; tr.default = true;
+      this.v.appendChild(tr); this._subUrl = url; this._subTrack = tr; this.subLabel = tr.label;
+      const show = () => { for (const t of this.v.textTracks) t.mode = "showing"; };
+      tr.addEventListener("load", show); show(); setTimeout(show, 0);
+    }
+    clearSubtitles() { if (this._subTrack) { this._subTrack.remove(); this._subTrack = null; } if (this._subUrl) { URL.revokeObjectURL(this._subUrl); this._subUrl = null; } this.subLabel = ""; }
+    hasSubtitles() { return !!this._subTrack; }
     play() { const p = this.v.play(); if (p && p.catch) p.catch((e) => { if (e && e.name === "NotAllowedError") return; /* autoplay blocked: the session asks for a click */ if (e && e.name === "AbortError") return; if (e && e.name === "NotSupportedError") return; }); }
     pause() { this.v.pause(); }
     seek(t) { const d = this.duration(); const x = Math.max(0, d > 0 ? Math.min(t, d) : t); if (this.v.readyState >= 1) { try { this.v.currentTime = x; } catch (e) { /* ignore */ } } else this.pendingSeek = x; }
@@ -223,7 +234,7 @@ const CinemaDrive = (() => {
     rate() { return this.v.playbackRate || 1; }
     title() { return this.meta ? this.meta.name : ""; }
     destroy() {
-      this.dead = true; this.seq++;
+      this.dead = true; this.seq++; this.clearSubtitles();
       try { this.v.pause(); this.v.removeAttribute("src"); this.v.load(); } catch (e) { /* ignore */ }
       if (this.fileId) release(this.fileId);
       this.hooks = {}; this.v.remove();
