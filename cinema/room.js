@@ -191,8 +191,8 @@ const Cinema = (() => {
       const c = C.validateChat(m); if (!c) return;
       this.ui.addChatMessage({ mine: false, name: (this.link.peer && this.link.peer.name) || "Partner", text: c.text, ts: c.ts });
     },
-    whereText() { const r = this.remote; return r ? { home: "in the house", cinema: "in the cinema", out: "outside" }[r.where] : ""; },
-    where(game) { return game.inside ? (game.inside.isCinema ? "cinema" : "home") : "out"; },
+    whereText() { const r = this.remote; return r ? { home: "in the house", gaming: "in the gaming room", cinema: "in the cinema", out: "outside" }[r.where] : ""; },
+    where(game) { return game.inside ? (game.inside.isCinema ? "cinema" : game.inside.isGaming ? "gaming" : "home") : "out"; },
 
     /* presence */
     onPos(m) {
@@ -308,7 +308,7 @@ const Cinema = (() => {
     }
     if (dir === "cinemaUp") {
       this.inside = this.homeRoom; this.nearestIn = null; this.sitting = null;
-      p.x = 39 * S - p.w / 2; p.y = 94 * S; p.dirKey = "down";           // at the foot of the cellar stairs
+      const sf = this.homeRoom.stairsFoot ? this.homeRoom.stairsFoot() : { x: 39 * S - p.w / 2, y: 94 * S }; p.x = sf.x; p.y = sf.y; p.dirKey = "down";   // at the foot of the cellar stairs
       this.ui.place = "Your Home"; this.homeCam().follow(p, this.inside.world, 0, true);
       return;
     }
@@ -317,7 +317,7 @@ const Cinema = (() => {
     return r;
   });
   wrap("doSleep", function (o, passedOut) {                             // passing out can't happen "inside" the cellar: bring the farmer upstairs first
-    if (this.inside && this.inside.isCinema) { cin.onLeave(this); this.inside = this.homeRoom; this.sitting = null; const p = this.player; p.x = 39 * S - p.w / 2; p.y = 94 * S; }
+    if (this.inside && this.inside.isCinema) { cin.onLeave(this); this.inside = this.homeRoom; this.sitting = null; const p = this.player, sf = this.homeRoom.stairsFoot ? this.homeRoom.stairsFoot() : { x: 39 * S - p.w / 2, y: 94 * S }; p.x = sf.x; p.y = sf.y; }
     return o.call(this, passedOut);
   });
   // stairs in the house now lead somewhere
@@ -327,7 +327,7 @@ const Cinema = (() => {
   const homeDraw = HomeKit.Room.prototype.draw;
   HomeKit.Room.prototype.draw = function (ctx, cam, game) {
     const r = cin.remote, extras = [];
-    if (r && r.where === "home") extras.push({ y: r.y + r.h, draw: (c, cm) => r.draw(c, cm) });
+    if (r && r.where === (this.isGaming ? "gaming" : "home")) extras.push({ y: r.y + r.h, draw: (c, cm) => r.draw(c, cm) });
     for (const d of cin.things(game)) extras.push(d);              // co-op emotes (cinema/emotes.js)
     if (!extras.length) return homeDraw.call(this, ctx, cam, game);
     for (const e of extras) this.things.push(e);

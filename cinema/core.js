@@ -176,7 +176,7 @@ const CinemaCore = (() => {
   }
 
   /* ---------- presence packets from the partner ---------- */
-  const WHERE = ["home", "cinema", "out"], DIRS = ["up", "down", "left", "right"];
+  const WHERE = ["home", "gaming", "cinema", "out"], DIRS = ["up", "down", "left", "right"];
   function validatePos(o) {
     if (!o || typeof o !== "object" || !WHERE.includes(o.w)) return null;
     const out = { w: o.w };
