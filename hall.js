@@ -206,8 +206,8 @@ const HallKit = (() => {
       it("speaker", 113, 100, { col: [2, 24, 17, 16] }),
       it("tv_night", 140, 100, { anim: true, col: [1, 28, 63, 22], act: "tv", label: "Big TV", prompt: "Look", say: "The big screen is showing a game demo on loop." }),
       it("console_white", 211, 96, { col: [1, 4, 20, 7], nocol: true }),
-      it("arcade_blue", 240, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade", label: "Arcade cabinet", prompt: "Look", say: "INSERT COIN  -  the cabinet is waiting for a challenger." }),
-      it("arcade_red", 274, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade", label: "Arcade cabinet", prompt: "Look", say: "INSERT COIN  -  the cabinet is waiting for a challenger." }),
+      it("arcade_blue", 240, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade1", label: "Arcade cabinet", prompt: "Play Arcade" }),
+      it("arcade_red", 274, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade2", label: "Neo Geo cabinet", prompt: "Play Arcade" }),
       it("server", 310, 100, { anim: true, col: [2, 28, 25, 25] }),
       it("aquarium", 342, 100, { anim: true, col: [1, 20, 41, 24], act: "fish", label: "Aquarium", prompt: "Watch the fish", say: "Little fish drifting by. Very relaxing." }),
       wallOf("neon_pad", 36, 22, { anim: true }), wallOf("poster_invader", 70, 22),
@@ -249,6 +249,8 @@ const HallKit = (() => {
     switch (spot.act) {
       case "gaming": game.enterGaming(); return;
       case "mainhall": game.leaveGaming(); return;
+      case "arcade2": if (typeof NeoGeo !== "undefined") NeoGeo.open(game); return;                  // cinema/neogeo.js: Neo Geo game picker + emulator hand-off
+      case "arcade1": if (typeof Arcade !== "undefined") Arcade.open(game); return;      // cinema/arcade.js: Whack-a-Mole, Memory Lights, How Fast?
       case "door": case "stairs": case "eat": case "bed": return HomeKit.act(game, spot);
       default: say(spot.say || "Cosy.");
     }

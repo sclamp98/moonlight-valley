@@ -1,0 +1,79 @@
+/* Moonlight Valley — house-style HUD.
+   A restyle only: it is loaded after style.css and just re-skins the existing HUD elements (same ids, same behaviour).
+   Palette is taken from the house interior: warm oak, cream, soft beige, one muted gold accent. */
+:root {
+  --h-wood: rgba(79, 52, 31, .92);
+  --h-wood-2: rgba(62, 40, 24, .94);
+  --h-line: #2e1d10;
+  --h-cream: #f5e8cb;
+  --h-beige: #d7bf94;
+  --h-gold: #dcaa4d;
+  --h-shadow: 0 2px 8px rgba(24, 14, 6, .38);
+  --h-inner: inset 0 0 0 1px rgba(245, 232, 203, .14);
+}
+/* every HUD plate: one restrained border, one hairline highlight, one soft shadow */
+#clock.wood, #energy.wood, #hotbar.wood {
+  background: var(--h-wood); border: 2px solid var(--h-line); border-radius: 10px; box-shadow: var(--h-inner), var(--h-shadow);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+}
+#clock { top: 12px; right: 12px; width: 148px; padding: 7px 9px; color: var(--h-cream); text-shadow: none; font-weight: 600; letter-spacing: .01em; }
+#clock-date { font-size: 15px; } #clock-season { font-size: 12px; color: var(--h-gold); font-weight: 600; }
+#clock-time { background: rgba(30, 18, 9, .55); color: var(--h-cream); font-size: 20px; border-radius: 6px; margin: 4px 0 5px; }
+.clock-gold { background: rgba(30, 18, 9, .55); color: var(--h-gold); font-size: 16px; border-radius: 6px; }
+.coin { width: 13px; height: 13px; box-shadow: 0 0 0 1.5px #6e4a1c; }
+#clock-wx { width: 34px; height: 34px; }
+
+#health { top: 12px; left: 12px; width: 176px; height: 18px; background: rgba(30, 18, 9, .62); border: 2px solid var(--h-line); border-radius: 9px; box-shadow: var(--h-inner), var(--h-shadow); overflow: hidden; }
+#health-fill { background: linear-gradient(180deg, #c9675c, #a94a41); border-radius: 7px; }
+#health-text { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--h-cream); text-shadow: 0 1px 1px rgba(0, 0, 0, .55); }
+#coords { top: 38px; left: 14px; font-size: 12px; font-weight: 600; color: var(--h-beige); opacity: .85; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+
+#energy { right: 12px; bottom: 12px; width: 26px; height: 112px; padding: 3px; border-radius: 13px !important; }
+#energy-fill { border-radius: 10px; background: linear-gradient(180deg, #8fb86a, #6f9a52); box-shadow: none; }
+.en-label { font-size: 11px; color: var(--h-cream); text-shadow: 0 1px 1px rgba(0, 0, 0, .6); }
+
+#can-water { bottom: 80px; background: var(--h-wood); border: 2px solid var(--h-line); border-radius: 9px; color: var(--h-cream); font-size: 11px; box-shadow: var(--h-shadow); }
+#can-fill { background: #7fb5cf; } .can-bar { background: rgba(30, 18, 9, .6); }
+
+/* the prompt: cream label, only present when there is something to do */
+#hint { bottom: 114px; padding: 6px 16px; border-radius: 999px; background: rgba(245, 232, 203, .96); color: #3b2616; border: 2px solid #a8693a; font-size: 14px; font-weight: 700; box-shadow: var(--h-shadow); animation: hudRise .18s ease-out; }
+#hint[hidden] { display: none; }
+@keyframes hudRise { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* inventory: not on screen during play. The bag (I) is the inventory; the hotbar only peeks in for a moment when you change tool. */
+#hotbar { bottom: 14px; padding: 5px; gap: 3px; opacity: 0; transform: translate(-50%, 10px); pointer-events: none; transition: opacity .18s, transform .18s; }
+#hotbar.peek { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.hb-slot { width: 46px; height: 46px; border-radius: 8px; background: rgba(30, 18, 9, .5); border: 2px solid var(--h-line); box-shadow: none; }
+.hb-slot .inv-icon { width: 38px; height: 38px; background-size: 38px 38px; }
+.hb-slot.sel { background: rgba(220, 170, 77, .28); border-color: var(--h-gold); box-shadow: 0 0 0 1px rgba(245, 232, 203, .35); transform: translateY(-3px); }
+.hb-key { color: var(--h-beige); font-size: 9px; }
+#bag-btn { position: absolute; right: 12px; bottom: 134px; pointer-events: auto; display: none; width: 44px; height: 44px; border-radius: 12px; font-size: 22px; line-height: 1; cursor: pointer; color: var(--h-cream); background: var(--h-wood); border: 2px solid var(--h-line); box-shadow: var(--h-inner), var(--h-shadow); }
+#bag-btn:active { transform: translateY(1px); } #bag-btn:focus-visible { outline: 2px solid var(--h-gold); outline-offset: 2px; }
+@media (pointer: coarse), (max-width: 900px) { #bag-btn { display: block; } }
+
+/* the key list is a first-minutes hint: it fades itself out */
+#controls { bottom: 12px; left: 12px; max-width: 250px; font-size: 11px; line-height: 1.45; color: var(--h-beige); background: rgba(46, 29, 16, .62); border: 1px solid rgba(245, 232, 203, .18); border-radius: 9px; padding: 6px 10px; animation: hudFade 1.2s 14s forwards; }
+@keyframes hudFade { to { opacity: 0; visibility: hidden; } }
+
+/* messages, dialogue and confirmation share the same cream / oak language */
+#toast { background: rgba(245, 232, 203, .96); color: #3b2616; border: 2px solid #a8693a; border-radius: 999px; font-weight: 700; box-shadow: var(--h-shadow); }
+#dialog { background: var(--h-wood-2); border: 2px solid var(--h-gold); border-radius: 12px; box-shadow: var(--h-inner), 0 6px 20px rgba(0, 0, 0, .45); }
+#dialog .dlg-name { color: var(--h-gold); } #dialog .dlg-text { color: var(--h-cream); }
+.panel-box { background: var(--h-wood-2) !important; border: 2px solid var(--h-line) !important; border-radius: 12px !important; box-shadow: var(--h-inner), 0 10px 28px rgba(0, 0, 0, .5) !important; }
+.panel-box h2 { color: var(--h-cream); letter-spacing: .02em; }
+.cook-btn { border-radius: 8px; }
+
+/* co-op controls (made by cinema/ui.js) */
+body #coop-btn, body #chat-fab { background: var(--h-wood) !important; border: 2px solid var(--h-line) !important; border-radius: 999px !important; color: var(--h-cream) !important; font-weight: 600; box-shadow: var(--h-shadow); }
+body #coop-btn:hover, body #chat-fab:hover { background: rgba(104, 70, 42, .96) !important; }
+
+/* small screens: smaller plates, nothing overlaps */
+@media (max-width: 700px) {
+  #clock { width: 118px; padding: 5px 6px; } #clock-date { font-size: 13px; } #clock-time { font-size: 16px; margin: 3px 0 4px; } .clock-gold { font-size: 13px; }
+  #clock-wx { width: 26px; height: 26px; }
+  #health { width: 124px; height: 15px; } #health-text { font-size: 9px; } #coords { display: none; }
+  #energy { width: 20px; height: 84px; bottom: 70px; } .hb-slot { width: 34px; height: 34px; } .hb-slot .inv-icon { width: 28px; height: 28px; background-size: 28px 28px; }
+  #hint { bottom: 100px; font-size: 13px; max-width: 94vw; white-space: normal; text-align: center; border-radius: 14px; } #can-water { bottom: 62px; } #bag-btn { bottom: 164px; }
+  #hotbar { bottom: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { #hotbar, #hint { transition: none; animation: none; } }
