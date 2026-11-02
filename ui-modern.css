@@ -1,0 +1,317 @@
+/* Moonlight Valley — modern UI layer.
+   Presentation only: same ids, same classes, same behaviour. Loaded LAST (end of <body>), so it supersedes style.css, hud.css and the
+   styles injected by cinema/ui.js, arcade.js, neogeo.js, map.js and profile.js without touching them.
+   Palette is the house interior: warm white, cream, beige, muted charcoal, one sage and one clay accent.
+
+   Layout of this file
+   1  tokens        2  base / type / buttons / inputs     3  HUD (status, clock, hotbar, bag, prompts)
+   4  notifications (toast, day banner, co-op toasts)     5  panels (inventory, chest, shop, cook, map, dialog, confirm, game over)
+   6  co-op / code panels, chat, cinema                   7  arcade, Neo Geo, title screen
+   8  mobile / safe areas                                 9  reduced motion                                                         */
+
+/* ---------- 1. tokens ---------- */
+:root {
+  --m-paper: #faf7f2;           /* warm white  */
+  --m-cream: #f3ede2;           /* cream       */
+  --m-sand: #e6dccb;            /* beige       */
+  --m-line: rgba(43, 42, 40, .10);
+  --m-line-strong: rgba(43, 42, 40, .18);
+  --m-ink: #2b2a28;             /* muted charcoal */
+  --m-ink-2: #5d5a54;
+  --m-ink-3: #8b877e;
+  --m-sage: #7f9a73;            /* natural accent: ok / energy */
+  --m-sage-d: #5f7a55;
+  --m-clay: #c0715c;            /* accent: health / error */
+  --m-clay-d: #a5584a;
+  --m-brass: #b28d52;           /* accent: gold / focus */
+  --m-sky: #7ea3b8;
+  --m-glass: rgba(250, 247, 242, .90);
+  --m-glass-solid: #faf7f2;
+  --m-dark: rgba(34, 33, 31, .88);   /* charcoal glass for media UIs */
+  --m-dark-2: rgba(255, 255, 255, .07);
+  --m-on-dark: #f3ede2;
+  --m-r-s: 8px; --m-r-m: 12px; --m-r-l: 18px; --m-r-pill: 999px;
+  --m-sh-1: 0 1px 2px rgba(30, 28, 24, .10), 0 4px 14px rgba(30, 28, 24, .10);
+  --m-sh-2: 0 2px 4px rgba(30, 28, 24, .10), 0 18px 48px rgba(30, 28, 24, .26);
+  --m-ease: cubic-bezier(.22, .8, .3, 1);
+  --m-t: .18s;
+  --m-font: "Inter", "SF Pro Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --m-safe-t: env(safe-area-inset-top, 0px); --m-safe-r: env(safe-area-inset-right, 0px);
+  --m-safe-b: env(safe-area-inset-bottom, 0px); --m-safe-l: env(safe-area-inset-left, 0px);
+}
+
+/* ---------- 2. base ---------- */
+html body { font-family: var(--m-font); color: var(--m-ink); -webkit-font-smoothing: antialiased; }
+html body #hud, html body #toast, html body #dialog, html body #confirm, html body #overlay, html body #gameover { font-family: var(--m-font); }
+html body :focus-visible { outline: 2px solid var(--m-brass); outline-offset: 2px; }
+
+/* one button language: .cook-btn (game), .tbtn (title), plain buttons in injected panels */
+html body .cook-btn, html body .tbtn, html body #gameover button, html body .cin-chip, html body #coop-panel button, html body #cin-panel button,
+html body #arc button, html body #ngx button, html body #map-box button {
+  font-family: var(--m-font); font-weight: 600; font-size: 13px; letter-spacing: .01em; text-shadow: none;
+  color: var(--m-ink); background: var(--m-paper); border: 1px solid var(--m-line-strong); border-radius: var(--m-r-s);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 1px 2px rgba(30, 28, 24, .08); padding: 7px 14px; cursor: pointer;
+  transition: background var(--m-t), transform .08s, box-shadow var(--m-t), border-color var(--m-t);
+}
+html body .cook-btn:hover:not(:disabled), html body .tbtn:hover:not(:disabled), html body #gameover button:hover, html body .cin-chip:hover,
+html body #coop-panel button:hover:not(:disabled), html body #cin-panel button:hover:not(:disabled), html body #arc button:hover:not(:disabled),
+html body #ngx button:hover:not(:disabled), html body #map-box button:hover:not(:disabled) { background: #fff; border-color: rgba(43, 42, 40, .3); filter: none; }
+html body .cook-btn:active, html body .tbtn:active, html body #gameover button:active, html body #coop-panel button:active, html body #cin-panel button:active,
+html body #arc button:active, html body #ngx button:active { transform: scale(.97); box-shadow: none; }
+html body .cook-btn:disabled, html body .tbtn:disabled, html body #coop-panel button:disabled, html body #cin-panel button:disabled { opacity: .45; cursor: default; }
+html body .tbtn:not(.alt):not(.dim), html body #gameover button, html body #coop-panel #coop-connect, html body #coop-panel #coop-host, html body #coop-panel #coop-join,
+html body #cin-panel #cin-load { background: var(--m-ink); color: var(--m-paper); border-color: var(--m-ink); }
+html body .tbtn:not(.alt):not(.dim):hover:not(:disabled), html body #gameover button:hover, html body #coop-panel #coop-connect:hover:not(:disabled),
+html body #coop-panel #coop-host:hover:not(:disabled), html body #coop-panel #coop-join:hover:not(:disabled), html body #cin-panel #cin-load:hover:not(:disabled) { background: #3d3b38; border-color: #3d3b38; }
+html body .tbtn.dim { background: transparent; box-shadow: none; color: var(--m-ink-2); font-size: 12px; padding: 5px 10px; }
+html body .tbtn small { opacity: .7; }
+
+html body input[type=text], html body input[type=url], html body input[type=search], html body input:not([type]), html body textarea,
+html body #coop-panel input, html body #coop-panel textarea, html body #cin-panel input, html body .tcard input[type=text] {
+  font-family: var(--m-font); font-size: 14px; color: var(--m-ink); background: #fff; border: 1px solid var(--m-line-strong); border-radius: var(--m-r-s);
+  padding: 8px 11px; box-shadow: 0 1px 2px rgba(30, 28, 24, .05) inset; transition: border-color var(--m-t), box-shadow var(--m-t);
+}
+html body input:focus, html body textarea:focus { outline: none; border-color: var(--m-brass); box-shadow: 0 0 0 3px rgba(178, 141, 82, .22); }
+html body ::placeholder { color: var(--m-ink-3); }
+html body #coop-panel textarea, html body #coop-offer, html body #coop-answer, html body #coop-invite-in, html body #coop-reply-in {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; letter-spacing: .02em; line-height: 1.45; word-break: break-all;
+  background: var(--m-cream); color: var(--m-ink);
+}
+
+/* ---------- 3. HUD ---------- */
+/* every HUD plate: warm glass, hairline border, soft shadow, no wood */
+html body #clock.wood, html body #energy.wood, html body #hotbar.wood, html body #can-water, html body #worldmap, html body #health,
+html body #controls, html body #hint, html body #bag-btn {
+  background: var(--m-glass); border: 1px solid var(--m-line); border-radius: var(--m-r-m); box-shadow: var(--m-sh-1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1); backdrop-filter: blur(10px) saturate(1.1);
+}
+/* status: health */
+html body #health { top: calc(12px + var(--m-safe-t)); left: calc(12px + var(--m-safe-l)); width: 188px; height: 22px; border-radius: var(--m-r-pill); background: rgba(250, 247, 242, .82); overflow: hidden; padding: 2px; }
+html body #health-fill { border-radius: var(--m-r-pill); background: linear-gradient(90deg, #cf8472, var(--m-clay)); box-shadow: none; transition: width .3s var(--m-ease), background .3s; }
+html body #health-text { font: 700 10.5px/22px var(--m-font); letter-spacing: .06em; color: var(--m-ink); text-shadow: 0 0 3px rgba(250, 247, 242, .9); }
+html body #coords { top: calc(40px + var(--m-safe-t)); left: calc(16px + var(--m-safe-l)); color: var(--m-paper); text-shadow: 0 1px 3px rgba(0, 0, 0, .65); font: 600 11px var(--m-font); opacity: .9; background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* clock + gold */
+html body #clock { top: calc(12px + var(--m-safe-t)); right: calc(12px + var(--m-safe-r)); width: 142px; padding: 9px 11px; text-align: left; color: var(--m-ink); text-shadow: none; font-weight: 600; }
+html body #clock .clock-top { justify-content: flex-start; gap: 8px; }
+html body #clock-wx { width: 32px; height: 32px; }
+html body #clock-date { font-size: 14px; font-weight: 700; letter-spacing: .01em; color: var(--m-ink); }
+html body #clock-season { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--m-ink-3); }
+html body #clock-time { margin: 6px 0 5px; padding: 3px 0; text-align: center; font: 700 18px var(--m-font); font-variant-numeric: tabular-nums; color: var(--m-ink); background: var(--m-cream); border-radius: var(--m-r-s); transition: color .4s; }
+html body .clock-gold { display: flex; align-items: center; justify-content: center; gap: 6px; font: 700 14px var(--m-font); color: var(--m-ink-2); background: transparent; }
+html body .coin { box-shadow: 0 0 0 1.5px rgba(150, 110, 40, .55); }
+html body #coins, html body #gold { color: var(--m-ink); }
+/* energy + water */
+html body #energy { right: calc(12px + var(--m-safe-r)); bottom: calc(12px + var(--m-safe-b)); width: 24px; height: 104px; padding: 3px; border-radius: var(--m-r-pill) !important; }
+html body #energy-fill { border-radius: var(--m-r-pill); background: linear-gradient(0deg, var(--m-sage-d), var(--m-sage)); box-shadow: none; }
+html body .en-label { font: 700 10px var(--m-font); color: var(--m-ink); text-shadow: 0 0 3px rgba(250, 247, 242, .9); }
+html body #can-water { color: var(--m-ink-2); font: 600 11px var(--m-font); padding: 4px 10px; border-radius: var(--m-r-pill); }
+html body .can-bar { background: var(--m-sand); border-radius: var(--m-r-pill); }
+html body #can-fill { background: var(--m-sky); border-radius: var(--m-r-pill); }
+/* control hints: quiet, fade out as before */
+html body #controls { color: var(--m-ink-2); font: 500 11px/1.5 var(--m-font); padding: 8px 12px; border-radius: var(--m-r-m); left: calc(12px + var(--m-safe-l)); bottom: calc(12px + var(--m-safe-b)); }
+
+/* hotbar: still hidden during play, peeks when you change tool (hud.js) */
+html body #hotbar { bottom: calc(14px + var(--m-safe-b)); padding: 6px; gap: 4px; border-radius: var(--m-r-l); }
+html body .hb-slot { width: 46px; height: 46px; border-radius: 10px; background: var(--m-cream); border: 1px solid var(--m-line); box-shadow: none; transition: transform var(--m-t) var(--m-ease), background var(--m-t), border-color var(--m-t); }
+html body .hb-slot:hover { background: #fff; }
+html body .hb-slot.sel { background: #fff; border-color: var(--m-brass); box-shadow: 0 0 0 2px rgba(178, 141, 82, .35); transform: translateY(-3px); }
+html body .hb-key { color: var(--m-ink-3); font: 600 9px var(--m-font); }
+html body .hb-slot .inv-qty, html body .inv-qty { font: 700 10px var(--m-font); color: var(--m-ink); background: rgba(250, 247, 242, .9); border-radius: 6px; padding: 0 4px; text-shadow: none; }
+/* bag button (touch / narrow screens) */
+html body #bag-btn { width: 46px; height: 46px; border-radius: 14px; font-size: 21px; color: var(--m-ink); transition: transform .08s, background var(--m-t); right: calc(12px + var(--m-safe-r)); }
+html body #bag-btn:hover { background: #fff; } html body #bag-btn:active { transform: scale(.94); }
+
+/* interaction prompt: key chip + label, one shape for doors, furniture, arcade, NPCs, pick-ups */
+html body #hint { padding: 7px 16px 7px 12px; border-radius: var(--m-r-pill); color: var(--m-ink); font: 600 13.5px var(--m-font); letter-spacing: .005em; bottom: calc(112px + var(--m-safe-b)); animation: mvRise .2s var(--m-ease); pointer-events: auto; }
+html body #hint[hidden] { display: none; }
+html body #hint kbd, html body #hint .key { display: inline-block; min-width: 20px; padding: 1px 6px; margin-right: 6px; border-radius: 6px; background: var(--m-ink); color: var(--m-paper); font: 700 11px var(--m-font); text-align: center; }
+@keyframes mvRise { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ---------- 4. notifications ---------- */
+/* #toast carries messages, system lines AND the morning / day announcements (game.js showMessage) */
+html body #toast {
+  top: calc(64px + var(--m-safe-t)); max-width: min(92vw, 520px); padding: 10px 18px; border-radius: var(--m-r-m);
+  background: var(--m-glass); color: var(--m-ink); border: 1px solid var(--m-line); box-shadow: var(--m-sh-2); text-align: center;
+  font: 600 14px/1.4 var(--m-font); letter-spacing: .005em; text-shadow: none; white-space: normal;
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  transform: translateX(-50%) translateY(-8px) scale(.98); transition: opacity .22s var(--m-ease), transform .22s var(--m-ease);
+}
+html body #toast.show { transform: translateX(-50%) translateY(0) scale(1); }
+/* co-op / chat toasts made by cinema/ui.js, when present */
+html body .cin-toast, html body #cin-osd, html body .chat-toast {
+  font-family: var(--m-font) !important; background: var(--m-dark) !important; color: var(--m-on-dark) !important; border: 1px solid rgba(255, 255, 255, .12) !important;
+  border-radius: var(--m-r-m) !important; box-shadow: var(--m-sh-2) !important; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+
+/* ---------- 5. panels ---------- */
+html body #overlay { background: rgba(34, 33, 31, .38); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: mvFade .16s ease-out; }
+html body .panel-box {
+  background: var(--m-glass-solid) !important; color: var(--m-ink); border: 1px solid var(--m-line) !important; border-radius: var(--m-r-l) !important;
+  box-shadow: var(--m-sh-2) !important; padding: 20px 22px; animation: mvPop .22s var(--m-ease);
+}
+html body .panel-box h2 { font: 700 17px var(--m-font); letter-spacing: .005em; color: var(--m-ink); text-shadow: none; margin: 0; }
+html body .inv-header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--m-line); }
+html body #inv-coins, html body #chest-coins { font: 600 12px var(--m-font); color: var(--m-ink-2); background: var(--m-cream); padding: 3px 10px; border-radius: var(--m-r-pill); }
+html body .inv-grid { gap: 6px; }
+html body .inv-slot { background: var(--m-cream); border: 1px solid var(--m-line); border-radius: 10px; box-shadow: none; transition: background var(--m-t), border-color var(--m-t), transform .1s; }
+html body .inv-slot.filled { background: #fff; }
+html body .inv-slot.filled:hover { border-color: var(--m-brass); transform: translateY(-1px); }
+html body .inv-slot.drag-over { border-color: var(--m-sage); background: rgba(127, 154, 115, .16); }
+html body .inv-slot.dragging { opacity: .4; }
+html body .inv-footer { max-width: none; text-align: left; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--m-line); font: 500 11.5px/1.5 var(--m-font); color: var(--m-ink-3); }
+html body .drag-ghost { filter: drop-shadow(0 6px 10px rgba(30, 28, 24, .35)); }
+html body #cook-list, html body #shop-buy-list, html body #shop-sell-list, html body #travel-list { color: var(--m-ink); }
+html body .cook-row { background: var(--m-cream); border: 1px solid var(--m-line); border-radius: var(--m-r-m); color: var(--m-ink); box-shadow: none; }
+html body .cook-row.disabled { opacity: .55; }
+html body .cook-name { font-weight: 600; color: var(--m-ink); } html body .cook-name small, html body #travel-list small, html body .cook-cost { color: var(--m-ink-3); font-weight: 500; }
+html body .cook-empty { color: var(--m-ink-3); }
+html body .shop-col-title { font: 700 11px var(--m-font); letter-spacing: .09em; color: var(--m-ink-3); }
+/* world map thumbnail + full map */
+html body #worldmap { border-radius: var(--m-r-m); padding: 6px 7px 5px; right: calc(52px + var(--m-safe-r)); bottom: calc(12px + var(--m-safe-b)); }
+html body #worldmap canvas { border: 1px solid var(--m-line-strong) !important; border-radius: 6px !important; }
+html body #worldmap .wm-name, html body #wm-name { color: var(--m-ink-2); font: 600 10.5px var(--m-font); }
+html body #worldmap .wm-grid div { border-radius: 3px; }
+html body #map-box { color: var(--m-ink); }
+html body #map-box h2 small, html body #map-foot, html body #map-places .pg { color: var(--m-ink-3); }
+html body #map-canvas { border: 1px solid var(--m-line-strong); border-radius: var(--m-r-m); }
+html body #map-places, html body #map-wp { background: var(--m-cream); border-radius: var(--m-r-m); color: var(--m-ink); }
+html body #map-places .pl:hover { background: rgba(43, 42, 40, .07); }
+html body #map-places .pl i { color: var(--m-paper); border-color: rgba(0, 0, 0, .2); }
+html body #map-tip { background: var(--m-ink); color: var(--m-paper); border: 0; border-radius: var(--m-r-s); font-family: var(--m-font); box-shadow: var(--m-sh-1); }
+
+/* dialogue */
+html body #dialog { background: var(--m-glass-solid); border: 1px solid var(--m-line); border-radius: var(--m-r-l); box-shadow: var(--m-sh-2); padding: 14px 20px 10px; bottom: calc(40px + var(--m-safe-b)); animation: mvPop .2s var(--m-ease); }
+html body #dialog .dlg-name { color: var(--m-brass); font: 700 11px var(--m-font); letter-spacing: .1em; text-transform: uppercase; text-shadow: none; margin-bottom: 4px; }
+html body #dialog .dlg-text { color: var(--m-ink); font: 500 15px/1.55 var(--m-font); text-shadow: none; }
+html body #dialog .dlg-foot { color: var(--m-ink-3); font: 500 11px var(--m-font); }
+/* confirm (go to bed? …) */
+html body #confirm { background: rgba(34, 33, 31, .42); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: mvFade .16s ease-out; }
+html body #confirm .box, html body #confirm .box.wood { background: var(--m-glass-solid); color: var(--m-ink); border: 1px solid var(--m-line); border-radius: var(--m-r-l); box-shadow: var(--m-sh-2); padding: 22px 26px; animation: mvPop .22s var(--m-ease); }
+html body #confirm .cf-text { font: 600 16px/1.45 var(--m-font); color: var(--m-ink); text-shadow: none; }
+html body #confirm .cf-btns { gap: 10px; }
+html body #confirm #cf-yes { background: var(--m-ink); color: var(--m-paper); border-color: var(--m-ink); }
+/* game over */
+html body #gameover { background: rgba(34, 33, 31, .55); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+html body #gameover .box { background: var(--m-glass-solid); border: 1px solid var(--m-line); border-radius: var(--m-r-l); box-shadow: var(--m-sh-2); padding: 28px 38px; animation: mvPop .26s var(--m-ease); }
+html body #gameover h1 { font: 700 28px var(--m-font); color: var(--m-clay-d); text-shadow: none; letter-spacing: -.01em; }
+html body #gameover p { color: var(--m-ink-2); }
+@keyframes mvPop { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes mvFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- 6. co-op, codes, chat, cinema ---------- */
+html body #coop-btn, html body #chat-fab, html body #menu-btn {
+  font: 600 12px var(--m-font) !important; color: var(--m-ink) !important; background: var(--m-glass) !important; border: 1px solid var(--m-line) !important;
+  border-radius: var(--m-r-pill) !important; padding: 6px 13px !important; box-shadow: var(--m-sh-1) !important; text-shadow: none !important;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: background var(--m-t), transform .08s;
+}
+html body #coop-btn:hover, html body #chat-fab:hover, html body #menu-btn:hover { background: #fff !important; }
+html body #coop-btn:active, html body #chat-fab:active, html body #menu-btn:active { transform: scale(.96); }
+/* positions stay where the game put them (menu under the health bar, co-op below it); only the safe-area inset is added */
+html body #menu-btn { top: calc(44px + var(--m-safe-t)) !important; left: calc(12px + var(--m-safe-l)) !important; }
+html body #coop-btn { top: calc(72px + var(--m-safe-t)) !important; left: calc(12px + var(--m-safe-l)) !important; }
+html body #coop-btn .dot { box-shadow: 0 0 0 2px rgba(255, 255, 255, .6); }
+html body #coop-btn.on .dot { background: var(--m-sage) !important; } html body #coop-btn.warn .dot { background: var(--m-brass) !important; } html body #coop-btn.off .dot { background: var(--m-clay) !important; }
+
+/* panels: invite / reply codes, connection state, cinema controls */
+html body #coop-panel, html body #cin-panel {
+  background: var(--m-glass-solid) !important; color: var(--m-ink) !important; border: 1px solid var(--m-line) !important; border-radius: var(--m-r-l) !important;
+  box-shadow: var(--m-sh-2) !important; font-family: var(--m-font) !important; text-shadow: none !important;
+}
+html body #coop-panel h2, html body #coop-panel h3, html body #cin-panel h2, html body #cin-panel h3 { font: 700 16px var(--m-font); color: var(--m-ink); letter-spacing: 0; }
+html body #coop-panel label, html body #cin-panel label, html body #coop-panel small, html body #cin-panel small, html body #coop-intro, html body #coop-state,
+html body .cin-note, html body .cin-foot, html body #cin-status, html body #cin-who, html body #cin-role, html body .cin-role { color: var(--m-ink-2) !important; font-family: var(--m-font); }
+html body #coop-msg { font-weight: 600; } /* success / error feedback keeps its class colours, softened below */
+html body #coop-msg.ok, html body #coop-msg.good, html body #coop-live-text { color: var(--m-sage-d); }
+html body #coop-msg.err, html body #coop-msg.bad, html body #coop-msg.warn { color: var(--m-clay-d); }
+html body #coop-panel hr { border: 0; border-top: 1px solid var(--m-line); }
+html body #cin-x, html body #coop-close, html body #cin-close, html body #arc-x, html body #ngx-x { background: transparent !important; border: 0 !important; box-shadow: none !important; color: var(--m-ink-3) !important; font-size: 18px; padding: 2px 8px !important; border-radius: var(--m-r-s) !important; }
+html body #cin-x:hover, html body #coop-close:hover, html body #cin-close:hover, html body #arc-x:hover, html body #ngx-x:hover { background: rgba(43, 42, 40, .08) !important; color: var(--m-ink) !important; }
+html body #cin-seek, html body #cin-vol, html body #cin-panel input[type=range] { accent-color: var(--m-ink); }
+html body .cin-chip { border-radius: var(--m-r-pill); padding: 3px 11px; font-size: 11.5px; background: var(--m-cream); color: var(--m-ink-2); border: 1px solid var(--m-line); cursor: default; box-shadow: none; }
+html body .cin-chip.play { background: rgba(127, 154, 115, .22); color: var(--m-sage-d); border-color: rgba(127, 154, 115, .45); }
+html body .cin-chip.pause { background: rgba(178, 141, 82, .20); color: #8a6a35; border-color: rgba(178, 141, 82, .45); }
+html body .cin-chip.wait { background: rgba(126, 163, 184, .22); color: #4f7388; border-color: rgba(126, 163, 184, .5); }
+html body .cin-chip.error { background: rgba(192, 113, 92, .18); color: var(--m-clay-d); border-color: rgba(192, 113, 92, .45); }
+html body #cin-screen { border-radius: var(--m-r-m); box-shadow: var(--m-sh-2); }
+html body .cin-msg { color: var(--m-ink); font-family: var(--m-font); font-weight: 500; }
+html body .cin-msg.note { color: var(--m-ink-2); } html body .cin-msg.err { color: var(--m-clay-d); font-weight: 600; }
+
+/* ---------- 7. arcade, Neo Geo, title screen ---------- */
+html body #arc, html body #ngx { font-family: var(--m-font); background: rgba(34, 33, 31, .46); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+html body #arc .card, html body #ngx .card { background: var(--m-glass-solid); color: var(--m-ink); border: 1px solid var(--m-line); border-radius: var(--m-r-l); box-shadow: var(--m-sh-2); padding: 18px 20px; animation: mvPop .22s var(--m-ease); }
+html body #arc header b, html body #ngx header b { font-size: 17px; font-weight: 700; letter-spacing: 0; color: var(--m-ink); }
+html body #arc header .sub, html body #ngx header .sub { color: var(--m-ink-3); font-size: 12.5px; font-weight: 500; }
+html body #arc .gcard, html body #ngx .game, html body #arc .chip, html body #arc .pc { background: var(--m-cream); border: 1px solid var(--m-line); border-radius: var(--m-r-m); color: var(--m-ink); }
+html body #arc .gcard h3, html body #ngx .game h3 { font-weight: 700; color: var(--m-ink); }
+html body #arc .gcard p, html body #arc .note, html body #arc .status, html body #arc .chip .nm, html body #arc .chip .rk, html body #arc .pc .who, html body #arc .count small,
+html body #ngx .game .meta, html body #ngx .msg, html body #ngx .biosline, html body #ngx .empty { color: var(--m-ink-2); }
+html body #ngx .empty b { color: var(--m-ink); } html body #ngx .msg.err { color: var(--m-clay-d); }
+html body #arc .gcard .hs, html body #arc .hud span span, html body #arc .chip .nm i, html body #arc .chip.lead .rk { color: #8a6a35; }
+html body #arc .chip.lead, html body #arc .pc.winner { border-color: var(--m-brass); background: rgba(178, 141, 82, .14); }
+html body #arc .banner { text-shadow: none; letter-spacing: -.01em; } html body #arc .banner.win { color: #8a6a35; } html body #arc .banner.lose { color: var(--m-ink-2); }
+html body #arc .pc .tag { background: var(--m-ink); color: var(--m-paper); }
+html body #arc .count { background: rgba(250, 247, 242, .92); color: var(--m-ink); text-shadow: none; }
+html body #arc .stage, html body #arc .hud { color: var(--m-ink); }
+html body #arc .hole { background: radial-gradient(ellipse at 50% 75%, #3a3631 0 52%, var(--m-sand) 54%) !important; border: 1px solid var(--m-line-strong) !important; }
+html body #arc .hole kbd { color: var(--m-ink-3); }
+html body #arc .pad { border-color: var(--m-line-strong) !important; color: rgba(0, 0, 0, .35) !important; }
+html body #arc .pad[data-p="0"] { background: #8fae7f !important; } html body #arc .pad[data-p="1"] { background: #cf8472 !important; } html body #arc .pad[data-p="2"] { background: #d8b76a !important; } html body #arc .pad[data-p="3"] { background: #8fb0c4 !important; }
+html body #arc .pad.lit { box-shadow: 0 0 0 3px rgba(43, 42, 40, .25) !important; }
+html body #arc .rx { border: 1px solid var(--m-line-strong); color: var(--m-paper); }
+html body #arc .rx.show { background: #5d5a54; } html body #arc .rx.go { background: var(--m-sage-d); } html body #arc .rx.late { background: var(--m-clay-d); }
+html body #arc .dots i { background: var(--m-sand); border: 1px solid var(--m-line-strong); } html body #arc .dots i.on { background: var(--m-ink); }
+html body #ngx .game .art { background-color: var(--m-sand); color: var(--m-ink-2); }
+html body #ngx .screen { border: 1px solid var(--m-line-strong); border-radius: var(--m-r-m); background: #1e1d1b; }
+html body #ngx .screen .boot { background: #1e1d1b; color: var(--m-on-dark); }
+/* primary buttons inside the game cards */
+html body #arc button.pri, html body #ngx button.pri { background: var(--m-ink); color: var(--m-paper); border-color: var(--m-ink); }
+html body #arc button.pri:hover:not(:disabled), html body #ngx button.pri:hover:not(:disabled) { background: #3d3b38; }
+html body #ngx label.btn { font-family: var(--m-font); font-weight: 600; font-size: 13px; color: var(--m-ink); background: var(--m-paper); border: 1px solid var(--m-line-strong); border-radius: var(--m-r-s); box-shadow: 0 1px 2px rgba(30, 28, 24, .08); padding: 7px 14px; }
+html body #ngx label.btn:hover { background: #fff; }
+/* arcade invite toast ("X challenges you") */
+html body #arc-invite { background: var(--m-dark); color: var(--m-on-dark); border: 1px solid rgba(255, 255, 255, .12); border-radius: var(--m-r-m); box-shadow: var(--m-sh-2); font-family: var(--m-font); }
+html body #arc-invite button { background: rgba(255, 255, 255, .1); color: var(--m-on-dark); border-color: rgba(255, 255, 255, .2); box-shadow: none; }
+html body #arc-invite button.pri { background: var(--m-paper); color: var(--m-ink); }
+
+/* title / account screen: night sky stays (it is the game's own world), the card becomes the same paper surface */
+html body #title { font-family: var(--m-font); background: radial-gradient(ellipse at 50% 28%, #34415f 0%, #1c2237 58%, #12162a 100%); }
+html body #title h1 { font-weight: 700; letter-spacing: -.01em; color: var(--m-paper); text-shadow: 0 2px 24px rgba(250, 247, 242, .25); }
+html body #title .sub { color: rgba(250, 247, 242, .7); }
+html body .tcard { background: var(--m-glass-solid); color: var(--m-ink); border: 1px solid var(--m-line); border-radius: var(--m-r-l); box-shadow: var(--m-sh-2); }
+html body .tcard h2 { font-weight: 700; } html body .tcard label, html body .tnote, html body .prow .meta span { color: var(--m-ink-2); }
+html body .gcard { background: var(--m-cream); border: 1px solid var(--m-line); border-radius: var(--m-r-m); color: var(--m-ink); font-family: var(--m-font); transition: border-color var(--m-t), background var(--m-t); }
+html body .gcard:hover { background: #fff; }
+html body .gcard.sel { border-color: var(--m-ink); background: #fff; box-shadow: 0 0 0 2px rgba(43, 42, 40, .15); }
+html body .prow { background: var(--m-cream); border-radius: var(--m-r-m); color: var(--m-ink); }
+html body .prow .x { color: var(--m-clay); }
+
+/* ---------- 8. mobile + safe areas ---------- */
+@media (max-width: 700px) {
+  html body #health { width: 132px; height: 19px; } html body #health-text { font-size: 9px; line-height: 19px; } html body #coords { display: none; }
+  html body #clock { width: 112px; padding: 7px 8px; } html body #clock-date { font-size: 12px; } html body #clock-time { font-size: 15px; margin: 4px 0; } html body .clock-gold { font-size: 12px; }
+  html body #clock-wx { width: 24px; height: 24px; } html body #clock-season { font-size: 9.5px; }
+  html body #menu-btn { top: calc(38px + var(--m-safe-t)) !important; } html body #coop-btn { top: calc(64px + var(--m-safe-t)) !important; }
+  html body #energy { width: 20px; height: 80px; bottom: calc(70px + var(--m-safe-b)); }
+  html body .hb-slot { width: 36px; height: 36px; } html body .hb-slot .inv-icon { width: 28px; height: 28px; background-size: 28px 28px; }
+  html body #hotbar { bottom: calc(10px + var(--m-safe-b)); }
+  html body #hint { bottom: calc(104px + var(--m-safe-b)); max-width: 92vw; white-space: normal; text-align: center; border-radius: var(--m-r-m); font-size: 13px; }
+  html body #can-water { bottom: calc(64px + var(--m-safe-b)); }
+  html body #bag-btn { bottom: calc(168px + var(--m-safe-b)); width: 48px; height: 48px; }   /* 48px = comfortable touch target */
+  html body #toast { top: calc(58px + var(--m-safe-t)); font-size: 13px; padding: 9px 14px; }
+  html body .panel-box { padding: 16px 16px; max-height: calc(100vh - 24px - var(--m-safe-t) - var(--m-safe-b)); overflow: auto; }
+  html body #dialog { width: calc(100vw - 24px); bottom: calc(24px + var(--m-safe-b)); }
+  html body #worldmap { display: none; }
+  html body .cook-btn, html body .tbtn { min-height: 38px; }
+}
+@media (pointer: coarse) { html body #bag-btn { display: block; } html body .inv-slot, html body .cook-btn { min-height: 44px; } html body .hb-slot { min-width: 38px; } }
+@media (max-height: 460px) and (orientation: landscape) {
+  html body #clock { width: 104px; } html body #clock-wx { display: none; } html body #hotbar { bottom: calc(6px + var(--m-safe-b)); } html body #hint { bottom: calc(70px + var(--m-safe-b)); }
+  html body #energy { height: 60px; bottom: calc(60px + var(--m-safe-b)); } html body #bag-btn { bottom: calc(126px + var(--m-safe-b)); }
+}
+
+/* ---------- 9. reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html body #hotbar, html body #hint, html body #toast, html body .panel-box, html body #dialog, html body #confirm .box, html body #gameover .box, html body #overlay, html body #confirm,
+  html body .hb-slot, html body .inv-slot, html body #health-fill { animation: none !important; transition: none !important; }
+  html body .hb-slot.sel, html body .inv-slot.filled:hover { transform: none; }
+}

@@ -207,7 +207,7 @@ const HallKit = (() => {
       it("tv_night", 140, 100, { anim: true, col: [1, 28, 63, 22], act: "tv", label: "Big TV", prompt: "Look", say: "The big screen is showing a game demo on loop." }),
       it("console_white", 211, 96, { col: [1, 4, 20, 7], nocol: true }),
       it("arcade_blue", 240, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade1", label: "Arcade cabinet", prompt: "Play Arcade" }),
-      it("arcade_red", 274, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade2", label: "Neo Geo cabinet", prompt: "Play Arcade" }),
+      ...(window.MV_MOBILE ? [] : [it("arcade_red", 274, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade2", label: "Neo Geo cabinet", prompt: "Play Arcade" })]),   // phones: one arcade machine only (no Neo Geo / ROM loading)
       it("server", 310, 100, { anim: true, col: [2, 28, 25, 25] }),
       it("aquarium", 342, 100, { anim: true, col: [1, 20, 41, 24], act: "fish", label: "Aquarium", prompt: "Watch the fish", say: "Little fish drifting by. Very relaxing." }),
       wallOf("neon_pad", 36, 22, { anim: true }), wallOf("poster_invader", 70, 22),

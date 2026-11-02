@@ -210,6 +210,7 @@ const Emotes = (() => {
     }
   }
   function drawPrompt(ctx, cam, game) {                       // little key hints over your partner while an emote is possible
+    if (window.MV_MOBILE) return;                               // phones: no key-hint text over the partner; the Emote button opens the emote wheel instead
     const r = cin.remote; if (!r || cur) return;
     const st = stateOf(game); if (!st.sameRoom || st.busy || (cin.ui && cin.ui.modal)) return;
     const kinds = C.KIND_NAMES.filter((n) => C.check(n, me(game), partner(), st).ok); if (!kinds.length) return;

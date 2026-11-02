@@ -2,7 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1c2237">
+  <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Moonlight Valley">
+  <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/icon-192.png">
+  <script>
+    /* touch device? (?mobile=1 / ?mobile=0 forces it, for testing).  Read by mobile.js and hall.js. */
+    (function () { var q = location.search, m = window.matchMedia;
+      window.MV_MOBILE = /[?&]mobile=1/.test(q) ? true : /[?&]mobile=0/.test(q) ? false : !!(m && m("(pointer: coarse)").matches && !(m("(any-pointer: fine)").matches && m("(hover: hover)").matches)); })();
+  </script>
   <title>Moonlight Valley</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="hud.css">
@@ -130,6 +139,11 @@
   <script src="cinema/arcade.js"></script>
   <script src="cinema/neogeo.js"></script>
   <script src="hud.js"></script>
+  <script src="mobile.js"></script>   <!-- touch controls (no-op on desktop); before profile.js so its resize patch is in place when the game starts -->
   <script src="profile.js"></script>
+  <!-- modern UI layer: presentation only, loaded last so it supersedes style.css / hud.css / the styles injected by the cinema, arcade, map and profile scripts -->
+  <link rel="stylesheet" href="ui-modern.css">
+  <!-- phones / tablets: touch controls + layout (does nothing on desktop) -->
+  <link rel="stylesheet" href="mobile.css">
 </body>
 </html>

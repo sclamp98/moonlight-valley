@@ -1,0 +1,109 @@
+/* Moonlight Valley — phone / tablet layout. Loaded after ui-modern.css; every rule is scoped to html.mv-touch (set by mobile.js on touch
+   devices only), so desktop is untouched. Same tokens (--m-*) as ui-modern.css. */
+
+/* page: no scrolling, no browser gestures, no text selection, no grey tap flash */
+html.mv-touch, html.mv-touch body { height: 100%; height: 100dvh; width: 100%; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; position: fixed; inset: 0; }
+html.mv-touch input, html.mv-touch textarea { -webkit-user-select: text; user-select: text; touch-action: manipulation; font-size: 16px !important; }  /* 16px stops iOS zooming into fields */
+html.mv-touch #game { touch-action: none; }
+html.mv-touch .panel-box, html.mv-touch #coop-panel, html.mv-touch #cin-panel, html.mv-touch #map-body, html.mv-touch .plist { touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+
+/* ---------- touch layer ---------- */
+#mv-touch { display: none; }
+html.mv-touch #mv-touch { display: block; position: fixed; inset: 0; z-index: 7; pointer-events: none; font-family: var(--m-font); --mv-pad: 20px; }
+html.mv-touch.mv-away #mv-touch > *:not(#mv-rotate) { display: none !important; }
+#mv-touch > * { pointer-events: auto; }
+#mv-touch button { font-family: var(--m-font); -webkit-tap-highlight-color: transparent; touch-action: none; }
+
+.mv-btn { position: absolute; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--m-line-strong); color: var(--m-ink); background: rgba(250, 247, 242, .82); box-shadow: var(--m-sh-1); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); cursor: pointer; padding: 0; transition: transform .08s, background .12s; }
+.mv-btn.on, .mv-btn:active { transform: scale(.92); background: #fff; }
+#mv-act { width: 76px; height: 76px; right: calc(var(--m-safe-r) + 26px); bottom: calc(var(--m-safe-b) + 26px); font-size: 30px; background: var(--m-ink); color: var(--m-paper); border-color: var(--m-ink); }
+#mv-act.on { background: #4a4844; }
+#mv-use { width: 58px; height: 58px; right: calc(var(--m-safe-r) + 114px); bottom: calc(var(--m-safe-b) + 20px); font: 700 13px var(--m-font); letter-spacing: .02em; }
+#mv-side { position: absolute; right: calc(var(--m-safe-r) + 30px); top: calc(50% - 6px); display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+#mv-side > * { position: static; pointer-events: auto; width: 46px; height: 46px; font-size: 21px; }
+html.mv-touch #bag-btn { position: fixed; right: calc(var(--m-safe-r) + 30px); top: calc(50% - 80px); bottom: auto; width: 46px; height: 46px; border-radius: 50%; z-index: 7; font-size: 21px; }
+
+#mv-joy { position: absolute; left: calc(var(--m-safe-l) + 22px); bottom: calc(var(--m-safe-b) + 22px); width: 128px; height: 128px; border-radius: 50%; background: rgba(250, 247, 242, .42); border: 1px solid var(--m-line-strong); box-shadow: var(--m-sh-1) inset, var(--m-sh-1); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); touch-action: none; }
+#mv-joy::before { content: ""; position: absolute; inset: 14px; border-radius: 50%; border: 1px dashed rgba(43, 42, 40, .18); }
+#mv-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(250, 247, 242, .95); border: 1px solid var(--m-line-strong); box-shadow: var(--m-sh-1); transition: transform .06s linear; }
+#mv-joy.on #mv-knob { transition: none; background: #fff; }
+
+.mv-pop { position: absolute; right: calc(var(--m-safe-r) + 88px); top: 50%; transform: translateY(-50%); max-height: calc(100dvh - 20px); overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: var(--m-r-m); background: var(--m-glass-solid); border: 1px solid var(--m-line); box-shadow: var(--m-sh-2); animation: mvFade .14s ease-out; }
+.mv-pop[hidden] { display: none; }
+.mv-pop button { min-height: 44px; min-width: 132px; text-align: left; padding: 0 14px; font: 600 14px var(--m-font); color: var(--m-ink); background: var(--m-cream); border: 1px solid var(--m-line); border-radius: var(--m-r-s); }
+.mv-pop button:active { background: #fff; transform: scale(.98); }
+
+#mv-close { display: none; right: calc(var(--m-safe-r) + 14px); top: calc(var(--m-safe-t) + 12px); width: 48px; height: 48px; font-size: 20px; z-index: 60; position: fixed; }
+html.mv-touch.mv-panel #mv-touch > *:not(#mv-close):not(#mv-rotate) { display: none !important; }
+html.mv-touch.mv-panel #mv-close { display: flex; }
+html.mv-touch.mv-panel #mv-touch { z-index: 60; }
+#mv-rotate { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 78vw; text-align: center; padding: 10px 16px; border-radius: var(--m-r-m); background: var(--m-dark); color: var(--m-on-dark); font: 600 13px var(--m-font); box-shadow: var(--m-sh-2); animation: mvPop .2s var(--m-ease); }
+#mv-rotate[hidden] { display: none; }
+
+/* ---------- HUD on touch: nothing sits under a thumb ---------- */
+html.mv-touch body #controls, html.mv-touch body #coords, html.mv-touch body #worldmap { display: none !important; }
+html.mv-touch body #energy { right: calc(var(--m-safe-r) + 8px); bottom: auto; top: calc(50% - 54px); width: 14px; height: 100px; padding: 2px; }
+html.mv-touch body #energy .en-label { display: none; }
+html.mv-touch body #can-water { bottom: auto; top: calc(var(--m-safe-t) + 12px); left: 50%; transform: translateX(-50%); }
+html.mv-touch body #toast { top: calc(var(--m-safe-t) + 12px); max-width: min(66vw, 460px); }
+/* the tool bar is always on screen on a phone (there are no number keys) */
+html.mv-touch body #hotbar { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); bottom: calc(var(--m-safe-b) + 10px); padding: 4px; gap: 3px; }
+html.mv-touch body .hb-slot { width: clamp(24px, calc((100vw - 400px) / 10), 40px); height: clamp(24px, calc((100vw - 400px) / 10), 40px); min-width: 0; border-radius: 8px; }
+html.mv-touch body .hb-slot .inv-icon { width: 80%; height: 80%; background-size: contain; background-position: center; background-repeat: no-repeat; }
+html.mv-touch body .hb-key { display: none; }
+html.mv-touch body #hint { bottom: calc(var(--m-safe-b) + 66px); max-width: min(56vw, 420px); min-height: 40px; display: flex; align-items: center; padding: 0 18px; font-size: 14px; }
+html.mv-touch body #hint[hidden] { display: none; }
+/* top-left buttons stay where they were but get a finger-sized hit area */
+html.mv-touch body #coop-btn, html.mv-touch body #menu-btn, html.mv-touch body #chat-fab { min-height: 32px; }
+html.mv-touch body #chat-fab { top: calc(var(--m-safe-t) + 104px) !important; left: calc(var(--m-safe-l) + 12px) !important; right: auto !important; bottom: auto !important; }
+
+/* ---------- panels: scroll instead of overflowing; close button is always reachable ---------- */
+html.mv-touch body .panel-box { max-height: calc(100dvh - 24px - var(--m-safe-t) - var(--m-safe-b)); overflow-y: auto; max-width: calc(100vw - 20px - var(--m-safe-l) - var(--m-safe-r)); }
+html.mv-touch body #overlay { padding: calc(var(--m-safe-t) + 10px) calc(var(--m-safe-r) + 10px) calc(var(--m-safe-b) + 10px) calc(var(--m-safe-l) + 10px); }
+html.mv-touch body .inv-footer { display: none; }              /* keyboard / right-click instructions mean nothing on a phone */
+html.mv-touch body .inv-slot { min-width: 40px; min-height: 40px; }
+html.mv-touch body #dialog { bottom: calc(var(--m-safe-b) + 14px); }
+html.mv-touch body #confirm .cook-btn { min-width: 96px; min-height: 46px; font-size: 15px; }
+html.mv-touch body #map-box { max-height: calc(100dvh - 20px); overflow-y: auto; }
+html.mv-touch body #coop-panel { max-height: calc(100dvh - 20px - var(--m-safe-t) - var(--m-safe-b)); }
+
+/* ---------- portrait: controls move up the screen, the tool bar sits above them ---------- */
+html.mv-touch.mv-portrait body #hotbar { bottom: calc(var(--m-safe-b) + 164px); }
+html.mv-touch.mv-portrait body .hb-slot { width: clamp(24px, calc((100vw - 40px) / 10 - 4px), 40px); height: clamp(24px, calc((100vw - 40px) / 10 - 4px), 40px); }
+html.mv-touch.mv-portrait body #hint { bottom: calc(var(--m-safe-b) + 212px); max-width: 88vw; }
+html.mv-touch.mv-portrait #mv-joy { bottom: calc(var(--m-safe-b) + 24px); }
+html.mv-touch.mv-portrait #mv-side { top: calc(50% - 4px); } 
+html.mv-touch.mv-portrait #bag-btn { top: calc(50% - 78px); }
+html.mv-touch.mv-portrait body #energy { top: calc(50% - 72px); }
+
+/* very short landscape screens (small phones): smaller controls */
+@media (max-height: 400px) {
+  html.mv-touch #mv-joy { width: 112px; height: 112px; bottom: calc(var(--m-safe-b) + 14px); } html.mv-touch #mv-knob { width: 48px; height: 48px; margin: -24px 0 0 -24px; }
+  html.mv-touch #mv-act { width: 68px; height: 68px; bottom: calc(var(--m-safe-b) + 16px); } html.mv-touch #mv-use { width: 52px; height: 52px; right: calc(var(--m-safe-r) + 102px); bottom: calc(var(--m-safe-b) + 12px); }
+  html.mv-touch #mv-side > *, html.mv-touch #bag-btn { width: 44px; height: 44px; } html.mv-touch #mv-side { gap: 8px; top: calc(50% - 4px); }
+  html.mv-touch #bag-btn { top: calc(50% - 70px); } html.mv-touch body #hint { bottom: calc(var(--m-safe-b) + 56px); }
+}
+@media (max-height: 460px) { .mv-pop { display: grid; grid-template-columns: 1fr 1fr; } .mv-pop[hidden] { display: none; } .mv-pop button { min-width: 112px; min-height: 44px; padding: 0 10px; font-size: 13px; } }
+@media (prefers-reduced-motion: reduce) { .mv-btn, #mv-knob, .mv-pop, #mv-rotate { transition: none !important; animation: none !important; } }
+
+/* ---------- emote wheel (opened by the ☺ button) ---------- */
+.mv-wheel { position: fixed; left: 50%; top: 50%; width: 0; height: 0; z-index: 8; --R: 104px; animation: mvFade .14s ease-out; }
+.mv-wheel[hidden] { display: none; }
+.mv-wheel .mv-ring { position: absolute; left: -150px; top: -150px; width: 300px; height: 300px; border-radius: 50%; background: rgba(34, 33, 31, .34); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); pointer-events: none; }
+.mv-wheel button { position: absolute; left: -33px; top: -33px; width: 66px; height: 66px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0;
+  font: 600 10.5px var(--m-font); color: var(--m-ink); background: rgba(250, 247, 242, .88); border: 1px solid var(--m-line-strong); box-shadow: var(--m-sh-1);
+  transform: translate(calc(var(--x) * var(--R)), calc(var(--y) * var(--R))); transition: background .1s; }
+.mv-wheel button b { font-size: 24px; line-height: 1; font-weight: 400; }
+.mv-wheel button:active { background: #fff; filter: brightness(.97); }
+.mv-wheel .mv-wx { --x: 0; --y: 0; width: 46px; height: 46px; left: -23px; top: -23px; font-size: 17px; background: rgba(250, 247, 242, .7); }
+@media (max-height: 460px) { .mv-wheel { --R: 88px; } .mv-wheel .mv-ring { left: -128px; top: -128px; width: 256px; height: 256px; } .mv-wheel button { width: 60px; height: 60px; left: -30px; top: -30px; } .mv-wheel .mv-wx { width: 44px; height: 44px; left: -22px; top: -22px; } }
+
+/* ---------- see-through controls (still readable, but the game shows through) ---------- */
+html.mv-touch .mv-btn, html.mv-touch #bag-btn { background: rgba(250, 247, 242, .5); border-color: rgba(43, 42, 40, .14); box-shadow: 0 1px 6px rgba(30, 28, 24, .14); }
+html.mv-touch .mv-btn.on, html.mv-touch .mv-btn:active, html.mv-touch #bag-btn:active { background: rgba(255, 255, 255, .85); }
+html.mv-touch #mv-act { background: rgba(43, 42, 40, .58); border-color: rgba(43, 42, 40, .3); color: #fff; }
+html.mv-touch #mv-act.on { background: rgba(43, 42, 40, .8); }
+html.mv-touch #mv-joy { background: rgba(250, 247, 242, .22); border-color: rgba(250, 247, 242, .35); box-shadow: 0 1px 8px rgba(30, 28, 24, .12); }
+html.mv-touch #mv-knob { background: rgba(250, 247, 242, .6); box-shadow: 0 1px 6px rgba(30, 28, 24, .2); }
+html.mv-touch #mv-joy.on #mv-knob { background: rgba(255, 255, 255, .85); }
+html.mv-touch body #energy { opacity: .75; }
