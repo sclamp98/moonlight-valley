@@ -94,7 +94,7 @@ try:
         chk("controls are see-through but visible (0.2-0.7 alpha)", 0.2 < ev(pg, "+getComputedStyle(document.getElementById('mv-more')).backgroundColor.match(/[\\d.]+/g)[3]") < 0.7)
         pg.screenshot(path=f"{out}/m_landscape_emotes.png")
         tap(pg, "#mv-pop-emote button[data-k=k]"); chk("choosing Kiss sends the K key (existing emote system)", ev(pg, "window.__k.includes('k')") and ev(pg, "document.getElementById('mv-pop-emote').hidden"))
-        tap(pg, "#mv-more"); chk("more menu lists map / travel / cook / drop / full screen", ev(pg, "document.querySelectorAll('#mv-pop-more button').length") == 5 and rect(pg, "#mv-pop-more") is not None)
+        tap(pg, "#mv-more"); chk("more menu lists map / travel / cook / drop / sound / full screen", ev(pg, "document.querySelectorAll('#mv-pop-more button').length") == 6 and rect(pg, "#mv-pop-more") is not None)
         tap(pg, "#mv-pop-more button[data-k=t]"); chk("Travel from the menu opens the travel list (T key)", until(pg, "game.uiMode==='travel' || (game.uiMode && game.uiMode!=='inventory')", 2000) or ev(pg, "!!game.inside"), str(ev(pg, "game.uiMode")))
         pg.screenshot(path=f"{out}/m_landscape_more.png")
         tap(pg, "#mv-close"); pg.wait_for_timeout(300)

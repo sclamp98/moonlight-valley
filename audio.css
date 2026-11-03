@@ -1,0 +1,32 @@
+/* Moonlight Valley — sound settings. Same tokens as ui-modern.css (--m-*). */
+#aud-btn { position: fixed; left: calc(12px + var(--m-safe-l, 0px)); top: calc(100px + var(--m-safe-t, 0px)); z-index: 6; display: flex; align-items: center; justify-content: center; width: 34px; height: 28px; padding: 0; cursor: pointer;
+  font: 600 14px var(--m-font, system-ui); color: var(--m-ink, #2b2a28); background: var(--m-glass, rgba(250,247,242,.9)); border: 1px solid var(--m-line, rgba(43,42,40,.1)); border-radius: 999px; box-shadow: var(--m-sh-1, 0 2px 8px rgba(0,0,0,.15));
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: background .18s, transform .08s; }
+#aud-btn:hover, #aud-btn.open { background: #fff; } #aud-btn:active { transform: scale(.94); }
+#aud-panel { position: fixed; left: calc(12px + var(--m-safe-l, 0px)); top: calc(136px + var(--m-safe-t, 0px)); z-index: 45; width: min(320px, calc(100vw - 24px)); padding: 16px 18px 14px; box-sizing: border-box; font-family: var(--m-font, system-ui); color: var(--m-ink, #2b2a28);
+  background: var(--m-glass-solid, #faf7f2); border: 1px solid var(--m-line, rgba(43,42,40,.1)); border-radius: var(--m-r-l, 18px); box-shadow: var(--m-sh-2, 0 18px 48px rgba(0,0,0,.28)); animation: mvPop .2s var(--m-ease, ease-out); }
+#aud-panel[hidden] { display: none; }
+#aud-panel .aud-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--m-line, rgba(43,42,40,.1)); }
+#aud-panel h2 { margin: 0; font: 700 16px var(--m-font, system-ui); }
+#aud-panel .aud-x { background: transparent; border: 0; font-size: 17px; color: var(--m-ink-3, #8b877e); cursor: pointer; padding: 4px 8px; border-radius: 8px; } #aud-panel .aud-x:hover { background: rgba(43,42,40,.08); color: var(--m-ink, #2b2a28); }
+#aud-panel .aud-mute { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 12px; padding: 9px 12px; cursor: pointer; font: 600 13px var(--m-font, system-ui); color: var(--m-ink, #2b2a28); background: var(--m-cream, #f3ede2); border: 1px solid var(--m-line, rgba(43,42,40,.1)); border-radius: var(--m-r-m, 12px); transition: background .15s; }
+#aud-panel .aud-mute:hover { background: #fff; } #aud-panel .aud-mute.on { background: rgba(192,113,92,.16); border-color: rgba(192,113,92,.45); color: var(--m-clay-d, #a5584a); }
+#aud-panel .aud-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "n o" "i i"; align-items: center; gap: 2px 8px; margin: 0 0 10px; transition: opacity .2s; } #aud-panel .aud-row.off { opacity: .45; }
+#aud-panel .aud-n { grid-area: n; font: 600 12.5px var(--m-font, system-ui); color: var(--m-ink-2, #5d5a54); } #aud-panel output { grid-area: o; font: 600 12px var(--m-font, system-ui); font-variant-numeric: tabular-nums; color: var(--m-ink, #2b2a28); min-width: 38px; text-align: right; }
+#aud-panel input[type=range] { grid-area: i; width: 100%; height: 28px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; touch-action: pan-y; cursor: pointer; }
+#aud-panel input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(90deg, var(--m-ink, #2b2a28) var(--v, 50%), var(--m-sand, #e6dccb) var(--v, 50%)); }
+#aud-panel input[type=range]::-moz-range-track { height: 6px; border-radius: 999px; background: var(--m-sand, #e6dccb); } #aud-panel input[type=range]::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--m-ink, #2b2a28); }
+#aud-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: #fff; border: 1px solid var(--m-line-strong, rgba(43,42,40,.18)); box-shadow: 0 1px 4px rgba(30,28,24,.3); }
+#aud-panel input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 1px solid var(--m-line-strong, rgba(43,42,40,.18)); box-shadow: 0 1px 4px rgba(30,28,24,.3); }
+#aud-panel input[type=range]:focus-visible { outline: 2px solid var(--m-brass, #b28d52); outline-offset: 3px; border-radius: 6px; }
+#aud-panel .aud-note, #aud-panel .aud-state { font: 500 11.5px/1.45 var(--m-font, system-ui); color: var(--m-ink-3, #8b877e); } #aud-panel .aud-state { margin-top: 6px; color: var(--m-brass, #b28d52); font-weight: 600; } #aud-panel .aud-state[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { #aud-panel, #aud-btn { animation: none; transition: none; } }
+/* short landscape screens (phones): two columns so all four sliders fit without scrolling */
+@media (max-height: 460px) {
+  #aud-panel { width: min(600px, calc(100vw - 24px)); padding: 12px 16px 10px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; align-items: center; }
+  #aud-panel[hidden] { display: none; }
+  #aud-panel .aud-head, #aud-panel .aud-note, #aud-panel .aud-state { grid-column: 1 / -1; } #aud-panel .aud-head { margin-bottom: 6px; padding-bottom: 4px; }
+  #aud-panel .aud-mute { grid-column: 1 / -1; margin-bottom: 6px; padding: 6px 12px; }
+  #aud-panel .aud-row { margin-bottom: 2px; }
+  html.mv-touch body #aud-panel input[type=range] { height: 38px; }
+}

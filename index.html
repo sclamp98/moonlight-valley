@@ -139,11 +139,13 @@
   <script src="cinema/arcade.js"></script>
   <script src="cinema/neogeo.js"></script>
   <script src="hud.js"></script>
+  <script src="audio.js"></script>   <!-- music + sound effects (generated live, no audio files); before profile.js so it can wrap the game classes -->
   <script src="mobile.js"></script>   <!-- touch controls (no-op on desktop); before profile.js so its resize patch is in place when the game starts -->
   <script src="profile.js"></script>
   <!-- modern UI layer: presentation only, loaded last so it supersedes style.css / hud.css / the styles injected by the cinema, arcade, map and profile scripts -->
   <link rel="stylesheet" href="ui-modern.css">
   <!-- phones / tablets: touch controls + layout (does nothing on desktop) -->
   <link rel="stylesheet" href="mobile.css">
+  <link rel="stylesheet" href="audio.css">
 </body>
 </html>

@@ -107,3 +107,8 @@ html.mv-touch #mv-joy { background: rgba(250, 247, 242, .22); border-color: rgba
 html.mv-touch #mv-knob { background: rgba(250, 247, 242, .6); box-shadow: 0 1px 6px rgba(30, 28, 24, .2); }
 html.mv-touch #mv-joy.on #mv-knob { background: rgba(255, 255, 255, .85); }
 html.mv-touch body #energy { opacity: .75; }
+
+/* sound button lives in the ⋯ menu on touch; the floating one is desktop-only */
+html.mv-touch #aud-btn { display: none !important; }
+html.mv-touch body #aud-panel { left: 50%; top: 50%; transform: translate(-50%, -50%); max-height: calc(100dvh - 24px - var(--m-safe-t) - var(--m-safe-b)); overflow-y: auto; z-index: 70; touch-action: pan-y; }
+html.mv-touch body #aud-panel input[type=range] { height: 44px; }

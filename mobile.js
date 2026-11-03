@@ -46,7 +46,7 @@
       <button class="mv-wx" aria-label="Close emotes">✕</button>
     </div>
     <div id="mv-pop-more" class="mv-pop" hidden>
-      <button data-k="m">🗺 Map</button><button data-k="t">🧭 Travel</button><button data-k="c">🍳 Cook</button><button data-k="q">⬇ Drop item</button><button id="mv-fs">⛶ Full screen</button>
+      <button data-k="m">🗺 Map</button><button data-k="t">🧭 Travel</button><button data-k="c">🍳 Cook</button><button data-k="q">⬇ Drop item</button><button id="mv-snd">🔊 Sound</button><button id="mv-fs">⛶ Full screen</button>
     </div>
     <button id="mv-close" class="mv-btn" type="button" aria-label="Close">✕</button>
     <div id="mv-rotate" hidden>Turn your phone sideways for a wider view</div>`;
@@ -114,7 +114,7 @@
   for (const p of Object.values(pops)) p.addEventListener("pointerdown", (e) => {
     e.preventDefault(); e.stopPropagation();
     const b = e.target.closest("button"); if (!b) return;
-    if (b.id === "mv-fs") { toggleFullscreen(); } else if (b.dataset.k) tapKey(b.dataset.k);
+    if (b.id === "mv-fs") { toggleFullscreen(); } else if (b.id === "mv-snd") { try { MVAudio.togglePanel(); } catch (_) {} } else if (b.dataset.k) tapKey(b.dataset.k);
     closePops();
   });
   document.addEventListener("pointerdown", (e) => { if (!e.target.closest("#mv-pop-emote, #mv-pop-more, #mv-emote, #mv-more")) closePops(); }, true);
