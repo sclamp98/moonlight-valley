@@ -17,6 +17,7 @@ const HallKit = (() => {
   const ok = FP.ok;
   const FRAME = "#32333c";                                        // the pack's dark outer wall-top colour
   const img = {};
+  delete HALL_ART.anim.dog; delete HALL_ART.anim.cat;           // the pets are gone: never load their sprite sheets
   for (const n of Object.keys(HALL_ART.static)) img[n] = Object.assign(new Image(), { src: `assets/hall/${n}.png` });
   for (const n of Object.keys(HALL_ART.anim)) img["a_" + n] = Object.assign(new Image(), { src: `assets/hall/a_${n}.png` });
   const dim = (n) => HALL_ART.static[n] || HALL_ART.anim[n];
@@ -54,6 +55,7 @@ const HallKit = (() => {
       for (const d of def.items) this.add(d);
       for (const s of def.spots || []) this.spots.push(new Spot(s));
       if (def.bed) this.setupBed(def.bed);
+      if (def.treadmill) this.treadmill = new Treadmill(this, def.treadmill);
     }
     add(d) {
       const m = dim(d.n), w = m.w, h = m.h, x = d.x, y = d.y != null ? d.y : d.bottom - h, bottom = y + h;
@@ -92,7 +94,7 @@ const HallKit = (() => {
       for (const w of this.walls) w.draw(ctx, cam);
       for (const f of this.flats) f.draw(ctx, cam);
       const list = this.things.slice(), p = game.player;
-      if (!game.lying) list.push({ y: p.y + p.h, draw: (c, cm) => p.draw(c, cm) });
+      if (!game.lying && !game.tm) list.push({ y: p.y + p.h, draw: (c, cm) => p.draw(c, cm) });
       list.sort((a, b) => a.y - b.y);
       for (const d of list) d.draw(ctx, cam);
       if (game.nearestIn) { const r = game.nearestIn; ctx.strokeStyle = "rgba(255,246,194,.8)"; ctx.setLineDash([5, 4]); ctx.lineWidth = 2; ctx.strokeRect(r.x - cam.x, r.y - cam.y, r.w, r.h); ctx.setLineDash([]); }
@@ -105,6 +107,8 @@ const HallKit = (() => {
       this.pillows = [[b.x + 13, y + 17], [b.x + 36, y + 17]];
       this.things.push({ y: b.bottom, draw: (ctx, cam) => this.drawBed(ctx, cam) });
       this.pillows.forEach((p, i) => this.spots.push(new Spot({ x: p[0] - 9, y: b.bottom + 1, w: 18, h: 14, act: "bed", slot: i, label: "Double bed", prompt: "Lie down" })));
+      // the foot strip is the only place the prompt used to appear (hidden under the HUD, behind the nightstand) - walking up to the bed from the side found nothing
+      this.spots.push(new Spot({ x: b.x - 20, y: b.bottom - 34, w: 20, h: 30, act: "bed", slot: 0, label: "Double bed", prompt: "Lie down" }));
     }
     pillowXY(i) { const p = this.pillows[i]; return [p[0] * S, p[1] * S]; }
     standPos(i = 0) { return { x: this.pillows[i][0] * S - CONFIG.PLAYER_SIZE / 2, y: (this.bedDef.bottom + 7) * S }; }
@@ -148,7 +152,7 @@ const HallKit = (() => {
     openings: [sideDoorway("right", 136, "floor_grey"), frontDoorway(160)],
     lights: [
       { x: 101, y: 44, r: 230, c: [255, 215, 140] }, { x: 224, y: 74, r: 190, c: [255, 150, 70], flick: true },
-      { x: 152, y: 70, r: 150, c: [150, 190, 255] }, { x: 70, y: 150, r: 110, c: [255, 200, 120], flick: true }, { x: 296, y: 218, r: 120, c: [255, 200, 120], flick: true },
+      { x: 152, y: 70, r: 150, c: [150, 190, 255] }, { x: 296, y: 218, r: 120, c: [255, 200, 120], flick: true },
       { x: 176, y: 250, r: 120, c: [255, 215, 140] },
     ],
     bed: { x: 282, bottom: 246 },
@@ -170,10 +174,7 @@ const HallKit = (() => {
       it("armchair_a", 94, 172, { col: [3, 22, 29, 21] }),
       it("armchair_b", 227, 172, { col: [3, 22, 29, 21] }),
       it("sofa_teal", 145, 212, { col: [2, 14, 57, 22] }),
-      it("floor_lamp", 58, 178, { col: [6, 40, 14, 12] }),
       it("side_table", 262, 176, { col: [3, 16, 21, 14] }),
-      it("dog", 118, 206, { anim: true, nocol: true }),
-      it("cat", 206, 214, { anim: true, nocol: true }),
       // --- left side: music corner + dining table ---
       it("guitar", 22, 164, { col: [3, 28, 15, 14] }),
       it("dining_table", 22, 246, { col: [2, 22, 95, 18], act: "eat", label: "Dining table", prompt: "Eat a meal" }),
@@ -193,6 +194,7 @@ const HallKit = (() => {
 
   /* ---------- GAMING ROOM ---------- */
   const GAME = {
+    treadmill: { x: 292, foot: 270 },
     RW: 408, RH: 320, floor: { x: 16, y: 80, w: 376, h: 224 }, floorTile: "floor_grey", wallTile: "wall_navy",
     openings: [sideDoorway("left", 184, "floor_wood")],
     lights: [
@@ -207,7 +209,7 @@ const HallKit = (() => {
       it("tv_night", 140, 100, { anim: true, col: [1, 28, 63, 22], act: "tv", label: "Big TV", prompt: "Look", say: "The big screen is showing a game demo on loop." }),
       it("console_white", 211, 96, { col: [1, 4, 20, 7], nocol: true }),
       it("arcade_blue", 240, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade1", label: "Arcade cabinet", prompt: "Play Arcade" }),
-      ...(window.MV_MOBILE ? [] : [it("arcade_red", 274, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade2", label: "Neo Geo cabinet", prompt: "Play Arcade" })]),   // phones: one arcade machine only (no Neo Geo / ROM loading)
+      it("arcade_red", 274, 100, { anim: true, col: [2, 30, 27, 27], act: "arcade2", label: "Neo Geo cabinet", prompt: "Play Arcade" }),
       it("server", 310, 100, { anim: true, col: [2, 28, 25, 25] }),
       it("aquarium", 342, 100, { anim: true, col: [1, 20, 41, 24], act: "fish", label: "Aquarium", prompt: "Watch the fish", say: "Little fish drifting by. Very relaxing." }),
       wallOf("neon_pad", 36, 22, { anim: true }), wallOf("poster_invader", 70, 22),
@@ -236,6 +238,81 @@ const HallKit = (() => {
     ],
   };
 
+
+  /* ---------- the treadmill (Gaming Room) ----------
+     Art: assets/treadmill/* - cut from the supplied treadmill video (tools/build_treadmill_assets.py): treadmill_base.png is the machine on its own,
+     treadmill_{male,female}_run_00..19.png are the 20 frames of one stride loop (machine + runner, one shared canvas).  Nothing was re-drawn.
+     States (game.tm):  null = not on it  |  { run:false } = standing still on it  |  { run:true } = running.  `blend` (0..1) fades standing <-> running and
+     also scales the stride speed, so starting / stopping eases in and out instead of snapping.  A partner's state arrives in the "pos" presence packet (tm: 0|1|2). */
+  const cinema = () => (typeof Cinema !== "undefined" ? Cinema : null);      // cinema/room.js loads after this file (and is a lexical global, not on window)
+  const TM = { ax: 128, pad: 52, refH: 275.5, loop: 20, fps: 24, ramp: 0.35, deck: [-34, -22, 68, 36] };   // canvas numbers are for the half-size art; deck = solid, in screen px around the standing point
+  const tmImg = (f) => Object.assign(new Image(), { src: `assets/treadmill/${f}.png` });
+  const tmArt = { base: tmImg("treadmill_base"), male: [], female: [] };
+  for (const g of ["male", "female"]) for (let i = 0; i < TM.loop; i++) tmArt[g].push(tmImg(`treadmill_${g}_run_${String(i).padStart(2, "0")}`));
+  const tmDrawImg = (ctx, im, ax, ay, alpha = 1) => {
+    if (!ok(im) || alpha <= 0) return; const k = CONFIG.SPRITE_H.player / TM.refH, dw = im.naturalWidth * k, dh = im.naturalHeight * k;
+    ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(im, ax - TM.ax * k, ay + TM.pad * k - dh, dw, dh); ctx.restore();
+  };
+  const tmStep = (st, dt) => {                                    // st = { run, blend, phase } (the local player's, or a mirror of the partner's)
+    st.blend = Math.max(0, Math.min(1, st.blend + (st.run ? 1 : -1) * dt / TM.ramp));
+    st.phase = (st.phase + dt * TM.fps * st.blend) % TM.loop;
+  };
+  class Treadmill {
+    constructor(room, o) {
+      this.room = room; this.ax = o.x * S; this.ay = o.foot * S; this.remote = null;
+      const [dx, dy, dw, dh] = TM.deck; room.solids.push({ x: this.ax + dx, y: this.ay + dy, w: dw, h: dh });
+      room.spots.push(new Spot({ x: o.x - 22, y: o.foot + 6, w: 44, h: 18, act: "treadmill", label: "Treadmill", prompt: "Use the treadmill" }));
+      room.things.push({ y: this.ay + 2, draw: (ctx, cam, game) => this.draw(ctx, cam, window.game) });
+    }
+    occupiedByPartner() { const r = cinema() && cinema().remote; return !!(r && r.tm > 0 && r.seen); }
+    step(game, dt) {                                              // the partner's mirror (the local player's state is stepped by drive())
+      const r = cinema() && cinema().remote, m = this.remote;
+      if (r && r.tm > 0 && r.seen) { const run = r.tm === 2; if (!m) this.remote = { run, blend: run ? 1 : 0, phase: 0 }; else { if (run && !m.run) m.phase = 0; m.run = run; tmStep(m, dt); } }
+      else if (m) { m.run = false; tmStep(m, dt); if (m.blend <= 0) this.remote = null; }
+    }
+    draw(ctx, cam, game) {
+      const ax = this.ax - cam.x, ay = this.ay - cam.y;
+      tmDrawImg(ctx, tmArt.base, ax, ay);
+      const occ = [];
+      if (game.tm) occ.push({ st: game.tm, who: game.player, g: CONFIG.PLAYER_CHARACTER });
+      const r = cinema() && cinema().remote;
+      if (this.remote && r) occ.push({ st: this.remote, who: r, g: r.gender, partner: true });
+      for (const o of occ) {
+        const frames = tmArt[o.g === "female" ? "female" : "male"], st = o.st;
+        if (st.blend < 1) { ctx.save(); ctx.globalAlpha = 1 - st.blend; o.who._tmOwn = true; try { o.who.draw(ctx, cam); } finally { o.who._tmOwn = false; } ctx.restore(); }   // the player's own standing sprite: clothes, name tag and all
+        if (st.blend > 0) tmDrawImg(ctx, frames[Math.floor(st.phase) % TM.loop], ax, ay, st.blend);
+      }
+    }
+    mount(game) {
+      const p = game.player;
+      if (game.fade || game.lying || game.tm) return;
+      if (this.occupiedByPartner()) { game.showMessage("Your partner is using the treadmill.", 1800); return; }
+      game.tm = { run: true, blend: 0, phase: 0, leave: false };
+      p.x = this.ax - p.w / 2; p.y = this.ay - p.h; p.dirKey = "up"; p.moving = false; p.face = { x: 0, y: -1 };
+      game.nearestIn = null; if (cinema() && cinema().sendPos) cinema().sendPos(true);
+    }
+    dismount(game) {
+      const p = game.player; game.tm = null;
+      p.x = this.ax - p.w / 2; p.y = this.ay + TM.deck[1] + TM.deck[3] + 2; p.dirKey = "down"; p.moving = false;
+      for (let i = 0; i < 20 && this.room.solids.some((s) => p.overlaps(s)); i++) p.y += 3;
+      if (cinema() && cinema().sendPos) cinema().sendPos(true);
+    }
+    drive(game, dt, inp) {                                        // runs INSTEAD of the normal walking update while the player is on the machine
+      const p = game.player, st = game.tm, a = inp.axis();
+      p.x = this.ax - p.w / 2; p.y = this.ay - p.h; p.dirKey = "up"; p.moving = false; p.walkDist = 0;   // pinned to the belt: no sliding, no walk cycle
+      if (!st.leave) {
+        if (inp.wasPressed("escape")) { st.run = false; st.leave = true; }
+        else if (inp.wasPressed("e")) { if (!st.run) st.phase = 0; st.run = !st.run; }
+        else if (!st.run && st.blend <= 0 && (a.x || a.y)) st.leave = true;     // stopped: any move steps off (while running you cannot walk away)
+        if (this.occupiedByPartner() && cinema() && (cinema().self.name || "") > (cinema().remote.label || "")) { st.run = false; st.leave = true; game.showMessage("Your partner got on the treadmill first.", 1800); }
+      }
+      tmStep(st, dt);
+      if (st.leave && st.blend <= 0) { this.dismount(game); return; }
+      game.ui.setHint(st.leave ? "" : st.run ? "Press E — stop running  (Esc — step off)" : "Press E — run again  (move or Esc — step off)");
+    }
+    state(game) { return game.tm ? (game.tm.run ? 2 : 1) : 0; }
+  }
+
   class MainHall extends HallRoom { constructor() { super(HALL); this.isMainHall = true; } entryPos() { return { x: 176 * S - CONFIG.PLAYER_SIZE / 2, y: 232 * S }; } returnFromGaming() { return { x: 306 * S - CONFIG.PLAYER_SIZE / 2, y: 158 * S }; }
     stairsFoot() { return { x: 36 * S - CONFIG.PLAYER_SIZE / 2, y: 137 * S }; } }
   class GamingRoom extends HallRoom {
@@ -251,6 +328,7 @@ const HallKit = (() => {
       case "mainhall": game.leaveGaming(); return;
       case "arcade2": if (typeof NeoGeo !== "undefined") NeoGeo.open(game); return;                  // cinema/neogeo.js: Neo Geo game picker + emulator hand-off
       case "arcade1": if (typeof Arcade !== "undefined") Arcade.open(game); return;      // cinema/arcade.js: Whack-a-Mole, Memory Lights, How Fast?
+      case "treadmill": if (game.inside.treadmill) game.inside.treadmill.mount(game); return;
       case "door": case "stairs": case "eat": case "bed": return HomeKit.act(game, spot);
       default: say(spot.say || "Cosy.");
     }
@@ -258,6 +336,33 @@ const HallKit = (() => {
 
   /* ---------- Game integration (wraps only) ---------- */
   const wrap = (name, fn) => { const o = Game.prototype[name]; Game.prototype[name] = function (...a) { return fn.call(this, o, ...a); }; };
+
+  /* ---------- co-op: the treadmill rides on the existing "pos" presence packet (no new message type, nothing in cinema/*.js changes) ----------
+     Installed once, at runtime, when the first frame runs (so it wraps whatever cinema/room.js + cinema/emotes.js are loaded):
+       send    - Cinema.sendPos adds  tm: 1 (standing on it) | 2 (running)  to the packet while the player is on the machine
+       receive - Cinema.onPos copies it onto Cinema.remote.tm; a partner on the machine is drawn by the treadmill (not twice by the normal avatar pass)
+       emotes  - kiss / hug / kneel keys are ignored while on the machine (the same "busy" rule as lying in bed) */
+  const hookCoop = () => {
+    const cin = cinema(); if (!cin || cin._tmHooked || !cin.sendPos || !cin.onPos) return; cin._tmHooked = true;
+    const sp = cin.sendPos, op = cin.onPos;
+    cin.sendPos = function (force) {
+      const g = window.game, l = this.link, st = g && g.tm ? (g.tm.run ? 2 : 1) : 0;
+      if (!l || !st || typeof l.send !== "function") return sp.call(this, force);
+      const os = l.send; l.send = function (t, m, ...rest) { if (t === "pos" && m && m.w !== "out") m.tm = st; return os.call(this, t, m, ...rest); };
+      try { return sp.call(this, force); } finally { l.send = os; }
+    };
+    cin.onPos = function (m) {
+      const res = op.call(this, m), r = this.remote;
+      if (r) {
+        r.tm = m && m.w !== "out" && (m.tm === 1 || m.tm === 2) ? m.tm : 0;
+        if (!r._tmPatched) { r._tmPatched = true; const d = r.draw; r.draw = function (c, cm) { if (this.tm > 0 && !this._tmOwn) return; return d.call(this, c, cm); }; }
+      }
+      return res;
+    };
+    const up = Game.prototype.update;
+    Game.prototype.update = function (dt) { if (this.tm) for (const k of ["k", "h", "u", "g", "j"]) this.input.pressed.delete(k); return up.call(this, dt); };
+  };
+  wrap("update", function (o, dt) { hookCoop(); return o.call(this, dt); });
   HomeKit.Room = MainHall;                                       // cinema/room.js patches HomeKit.Room.prototype.draw (partner + emotes) — now the hall's
   Object.assign(Game.prototype, {
     enterGaming() { if (this.fade || this.lying) return; this.closeAllPanels(); this.fade = { phase: "out", t: 0, door: "gaming" }; },
@@ -268,6 +373,9 @@ const HallKit = (() => {
         const a = inp.axis();
         if (a.x || a.y) this.getUp(); else if (inp.wasPressed("e")) this.sleep();
         this.nearestIn = null; this.ui.setHint(this.lying ? "Press E — sleep until morning" : "");
+      } else if (this.tm && room.treadmill) {
+        p.hurtTimer = 0; p.attackTimer = 0; this.nearestIn = null;
+        room.treadmill.drive(this, dt, inp);                     // pinned on the machine: stand / run / step off
       } else {
         p.hurtTimer = 0; p.attackTimer = Math.max(0, p.attackTimer - dt);
         p.update(dt, inp, room.world, room.solids);
@@ -278,6 +386,7 @@ const HallKit = (() => {
         if (best && inp.wasPressed("e")) best.onInteract(this);
         this.ui.setHint(best ? `Press E — ${best.prompt}` : "");
       }
+      if (room.treadmill) room.treadmill.step(this, dt);
       this.homeCam().follow(p, room.world, dt);
       FP.season = this.date.seasonKey;
       this.ui.setHealth(p.hp, p.maxHp); this.ui.setEnergy(this.energy, CONFIG.MAX_ENERGY); this.ui.setClock(this.time, this.date, this.weather); this.ui.setStats(this.coins); this.ui.setCoords(p);
@@ -294,10 +403,14 @@ const HallKit = (() => {
       ctx.restore();
     },
   });
-  wrap("updateInside", function (o, dt) { return this.inside && this.inside.isHall ? this.updateHallRoom(dt) : o.call(this, dt); });
+  wrap("updateInside", function (o, dt) {
+    if (this.tm && !(this.inside && this.inside.isGaming)) this.tm = null;       // never stay "on the treadmill" after leaving the Gaming Room by any route
+    return this.inside && this.inside.isHall ? this.updateHallRoom(dt) : o.call(this, dt);
+  });
+  wrap("bedPress", function (o, slot) { if (this.fade) return; return o.call(this, slot); });   // no re-triggering while the night / morning fade is running
   wrap("renderInside", function (o) { return this.inside && this.inside.isHall ? this.renderHallRoom() : o.call(this); });
   wrap("passDoor", function (o, dir) {
-    const p = this.player;
+    const p = this.player; this.tm = null;
     if (dir === "in") {
       if (!(this.homeRoom && this.homeRoom.isMainHall)) this.homeRoom = new MainHall();
       const r = o.call(this, dir), e = this.homeRoom.entryPos();
@@ -320,6 +433,7 @@ const HallKit = (() => {
     return o.call(this, dir);
   });
   wrap("doSleep", function (o, passedOut) {                       // dozing off in the Gaming Room: wake up in the hall's bed like anywhere else in the house
+    this.tm = null;
     if (this.inside && this.inside.isGaming) {
       this.inside = this.homeRoom; const p = this.player, e = this.homeRoom.returnFromGaming(); p.x = e.x; p.y = e.y;
     }

@@ -1,29 +1,21 @@
-# Moonlight Valley — phone / tablet support
+# Moonlight Valley — pets / bed / lamp / treadmill update
 
-| File | Status | What |
-|---|---|---|
-| `mobile.js` | NEW | Touch controls: joystick (bottom-left), Interact (bottom-right), Use (hold), Emote wheel (☺ button → radial wheel: Kiss/Hug/Slap/Kneel/Grab), Backpack, More menu (Map/Travel/Cook/Drop/Full screen), close button for panels. Sends the same key events the game already reads, so no game logic changed. Does nothing on desktop. Also caps canvas pixel-ratio at 2 on phones. |
-| `mobile.css` | NEW | Phone layout (landscape + portrait, safe areas, scrolling panels, 44px+ touch targets). All rules scoped to `html.mv-touch`. |
-| `manifest.webmanifest`, `icons/icon-192.png`, `icons/icon-512.png` | NEW | Ready for "Add to Home Screen" (no service worker, so no caching surprises). |
-| `index.html` | EDITED | viewport/PWA meta tags, a small inline touch-detect script, `mobile.css` link, `mobile.js` script (before `profile.js`). Also contains the `ui-modern.css` link from the previous update. |
-| `hall.js` | EDITED (1 line) | The Neo Geo cabinet (`arcade_red`) is only created when NOT on a phone: `...(window.MV_MOBILE ? [] : [it("arcade_red", …)])`. Desktop unchanged. |
-| `cinema/emotes.js` | EDITED (1 line) | On phones the key-hint text over your partner ("K Kiss  U Hug …") is not drawn; `if (window.MV_MOBILE) return;` at the top of `drawPrompt`. Desktop unchanged. |
-| `tools/test_mobile.py`, `screenshots/` | NEW | Test + screenshots (not needed for deploy). |
+Copy these over your project (folder structure is kept). Nothing else changed.
 
-If your live `index.html` / `hall.js` differ from mine, apply just those edits by hand (they're small and marked with comments) instead of overwriting.
-Needs `ui-modern.css` from the previous ZIP to be deployed too.
+| File | |
+|---|---|
+| `hall.js` | modified — all four changes live here |
+| `assets/treadmill/treadmill_base.png` | new — the machine on its own (cut from your video, runner taken out) |
+| `assets/treadmill/treadmill_male_run_00..19.png`, `treadmill_female_run_00..19.png` | new — the 20 frames of one stride loop, straight from your video (male + female runner) |
+| `tools/build_treadmill_assets.py` | new — how the frames were cut (same workflow as the walk/emote frames) |
+| `tools/test_treadmill.py` | new — `python tools/test_treadmill.py` |
 
-## How to test on a phone
-Open the site on the phone (landscape is best). Left thumb: joystick. Right thumb: ✋ = interact (or tap the prompt pill / dialogue), Use = tool (hold), 🎒 backpack, ☺ emotes, ⋯ map/travel/cook/drop/full screen. Hotbar is tappable. In the Gaming Room there is one arcade machine → Whack-a-Mole, Memory Lights, How Fast?. Add `?mobile=1` to the URL to force touch mode on a desktop browser; `?mobile=0` forces it off.
-
-## Tested (emulated in Chromium with real touch events, incl. two-finger)
-58/58 mobile checks: joystick 8-way, release stops, Interact while holding the stick (exactly one press), Use hold, backpack/close/tap-outside, hotbar tap, emote + more menus, map, prompt text, one arcade machine only, all 3 mini-games started and played by touch, no overlap/off-screen at 7 screen sizes (iPhone SE/Pro Max, Android, small Android, tablet; landscape + portrait), desktop unaffected. Desktop suites still pass (UI 24/24, farming 24, breakables 55, weapons 20, map 17, profile 15, arcade rules 27).
-
-## NOT tested — please check on real devices
-- Real Android Chrome / iPhone Safari / real phones (only emulation; no physical device available).
-- Mobile ↔ desktop co-op over Ably, cinema, subtitles, chat: your current relay/cinema/chat files weren't available to me, and I had no second device. Controls send ordinary keys, so these shouldn't change, but they are unverified.
-- iPhone Safari has no Fullscreen API for pages (the button is hidden there); use "Add to Home Screen" for full-screen play.
-## Limits
-- "Run": the game has no run/sprint mechanic, so there is no Run button (adding one would be a new gameplay rule).
-- Joystick is 8-direction (like WASD) because the game's movement is digital.
-- The map can't be opened indoors (existing game rule).
+## What changed
+1. **Pets removed** — the dog and cat items are gone from the Main Hall and their sprite sheets are no longer requested.
+   Optional tidy-up I could not do (those files were not in the ZIPs I had): delete `assets/hall/a_dog.png`, `assets/hall/a_cat.png` and the `dog` / `cat` entries in `hallart.js`.
+2. **Bed** — the "Lie down" prompt only existed on a thin strip at the *foot* of the bed (behind the HUD / nightstand), so walking up to the side found nothing. Added a prompt zone on the left side of the bed.
+   The existing sleep flow is untouched and still follows the same rule (night, or energy ≤ 30; otherwise "You're not tired yet…"). E can no longer re-trigger the bed while the sleep/morning fade is running.
+3. **Lamp** — removed only the floor lamp beside the cellar stairs (+ its collider, + the warm glow that belonged to it). Stairs, other lamps/lights and furniture untouched.
+4. **Treadmill** — there was no treadmill object in the game, so one was added to the Gaming Room (bottom row, right of the ping-pong table).
+   E on the prompt puts you on it, running (your frames, in order, looping at the video's 24 fps). E stops → you stand still on it (your own sprite). E runs again. Esc eases to a stop and steps off; when stopped, any move key steps off. While running you cannot walk away. Starting/stopping cross-fades and ramps the stride speed. Works with the mobile Interact button + stick (they send E / arrow keys).
+   Co-op: the state (0/1/2) rides on the existing `pos` presence packet — no new message type; the partner sees you stand/run, can't take the machine while you're on it (message), and nobody's movement is locked.
