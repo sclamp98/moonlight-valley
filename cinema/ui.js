@@ -519,7 +519,7 @@ const CinemaUI = (() => {
       const s = this.getSession(), i = s.info(), p = this.panel, q = (x) => $(p, x);
       // the on-screen overlay while the video is still preparing
       const waiting = i.joined && i.active && !i.error && (i.kind === "wait" || i.needsGesture);
-      this.wait.hidden = !waiting; if (waiting) this.wait.textContent = i.needsGesture ? "Click “Join playback” below" : i.label === "Waiting for host" ? "Waiting for the host…" : "Loading…";
+      this.wait.hidden = !waiting; if (waiting) this.wait.textContent = i.needsGesture ? "Click “Join playback” below" : i.status ? i.status : i.label === "Waiting for host" ? "Waiting for the host…" : "Loading…";
       if (!this.cinOpen) return;
       const unsupported = this.uiMsg && this.uiMsg.kind === "unsupported", notSetUp = this.uiMsg && this.uiMsg.kind === "config";
       const chip = q("#cin-status"), label = unsupported ? "Unsupported Link" : notSetUp ? "Setup needed" : i.label, kind = unsupported || notSetUp ? "error" : i.kind;
@@ -551,6 +551,7 @@ const CinemaUI = (() => {
       if (this.uiMsg) { text = this.uiMsg.text; mk = "err"; }
       else if (i.error) { text = i.error; mk = "err"; }
       else if (i.needsAuth) { text = "This is a Google Drive video. Sign in with the Google account that can open it (press “Sign in with Google”)."; mk = "err"; }
+      else if (i.status) text = i.status;                                             // the video is being prepared (HEVC conversion): say what is happening
       else if (i.peerError) { text = `${who}'s player: ${i.peerError}`; mk = "err"; }
       else if (i.peerStale) { text = `${who} isn't responding. Playback may drift until they're back.`; mk = "err"; }
       else if (i.peerBuffering) text = `${who} is buffering. You can keep watching; they'll catch up to the shared position.`;

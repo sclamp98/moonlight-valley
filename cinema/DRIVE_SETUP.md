@@ -23,13 +23,27 @@ streams the file through the official Drive API. Nothing is ever made public by 
 ## Sharing the video
 Both players need access. Share the file with **both Google accounts** (Viewer is enough), or set "Anyone with the link".
 The game never changes sharing. The owner must allow downloading (Drive refuses apps otherwise).
-Supported formats are what the browser decodes from the original file: MP4 (H.264/AAC), WebM; MKV/AVI/HEVC often fail.
+Supported formats are what the browser decodes from the original file: MP4 (H.264/AAC), WebM; AVI often fails.
+
+### HEVC (H.265 / x265) videos, MP4 or MKV
+Many browsers cannot decode HEVC (it needs a hardware decoder in the computer's graphics chip plus OS support; Firefox mostly has none). Such a file
+used to open with sound and a **black picture**. Now the player always tries the file as it is first, and only when no picture / sound appears does it step in
+(`cinema/hevc.js`, `cinema/vendor/ffmpeg/`), one step at a time:
+1. **Repackage** (seconds, lossless): the HEVC video is copied untouched into an MP4 and AC-3 / DTS sound becomes AAC. This is what an MKV, or a file with AC-3 sound, needs on a computer that *can* decode HEVC.
+2. **Re-encode** to H.264 + AAC (slow): when the browser cannot decode HEVC at all (or the repackaged copy still shows nothing). 8-bit, up to 1080p (taller videos are scaled down), CRF 23.
+Everything happens inside the player's own browser tab (WebAssembly); nothing is uploaded. H.264 / WebM videos never touch this code.
+Honest limits: re-encoding runs at roughly real-time speed (a 20-second 1080p clip took about 20 seconds on a 2-core test machine; a 40-minute episode can take a good part of an hour on a slow computer),
+the whole file is downloaded first, and files over 1 GB are refused with a message (setting `hevcMaxBytes`). While one player is converting, the other keeps watching ("buffering" is shared) and the converting player
+joins the shared position when it is ready; the play / seek buttons are disabled for that player meanwhile. Embedded subtitles inside the file are dropped (use the CC Subtitles button with a .srt / .vtt file, which still works).
+HDR (HDR10 / Dolby Vision) is converted to ordinary SDR colours without tone mapping, so it can look washed out. For long movies the best fix is still to convert the file once to H.264 / AAC MP4 (e.g. HandBrake) before uploading it.
+Optional settings in `window.CINEMA_CONFIG`: `hevcMaxBytes`, `hevcMaxHeight` (default 1080, 0 = keep size), `hevcCrf` (default 23, lower = better quality / slower), `ffmpegBase` (where `cinema/vendor/ffmpeg/` lives).
+The converter files are ffmpeg.wasm: `@ffmpeg/ffmpeg` 0.12.10 and `@ffmpeg/core` 0.12.6 (single-thread build: no special server headers needed). That ffmpeg build contains x264, which is GPL-licensed software; keep that in mind if you distribute the game.
 
 ## Supported links
 `drive.google.com/file/d/<id>/view`, `/open?id=<id>`, `/uc?id=<id>`, `docs.google.com/file/d/<id>`, and a bare file id. Folders are refused.
 
 ## Tests
-`python tools/test_cinema.py` (YouTube fake, two browsers), `python tools/test_cinema_drive.py` (two browsers + local stand-in Drive API),
+`python tools/test_cinema.py` (YouTube fake, two browsers), `python tools/test_cinema_drive.py` (two browsers + local stand-in Drive API), `python tools/test_hevc.py` (HEVC / MKV: real cinema code + stand-in Drive API, needs ffmpeg),
 `node tools/test_cinema.js` (pure logic).
 
 ## Connecting the two players (co-op link)

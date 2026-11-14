@@ -109,7 +109,8 @@ const CinemaSession = (() => {
         peerName: this.peerName, peerBuffering: this.peerBuffering, peerError: this.peerError, peerStale: this.peerStale,
         needsGesture: this.needsGesture, needsAuth: this.needsAuth, error: this.error, ready,
         // either player may control the video as soon as their own player is ready
-        canControl: this.joined && live && ready && !this.needsAuth,
+        canControl: this.joined && live && ready && !this.needsAuth && !(ready && this.joined && a.status),     // not while the video is being converted (HEVC): a command now would carry position 0
+        status: ready && this.joined && a.status ? a.status : "",                                              // e.g. "Converting this HEVC video for your browser: 42%",
         lastAction: live && st ? { mine, who: mine ? "You" : this.peerName || "Your partner", cmd: st.cmd, position: st.position, provider: st.provider } : null,
         time: ready && this.joined ? a.time() : st ? st.position : 0, duration: ready && this.joined ? a.duration() : 0,
         rate: ready && this.joined ? a.rate() : st ? st.rate : 1, volume: this.vol, muted: this.muted, title: ready && this.joined ? a.title() : "",
@@ -165,6 +166,7 @@ const CinemaSession = (() => {
       if (!this.active) return { ok: false, error: "Load a video first." };
       if (!this.joined) return { ok: false, error: "Join the session first." };
       if (this.adapterStatus !== "ready") return { ok: false, error: "The player is still starting. One moment." };
+      if (this.adapter.status) return { ok: false, error: this.adapter.status };
       return null;
     }
     async loadVideo(input) {

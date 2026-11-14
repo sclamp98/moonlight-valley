@@ -157,6 +157,32 @@ const CinemaDrive = (() => {
   onToken((t) => { for (const r of registered.values()) r.token = t; try { if (registered.size) post({ type: "token", token: t }).catch(() => {}); } catch (e) { /* ignore */ } });
   const streamUrl = (id) => new URL("__cinema_drive/" + id, document.baseURI).href;
 
+  /* ---------- HEVC / H.265 (cinema/hevc.js, loaded only when a video turns out to need it) ----------
+     Browsers that can't decode HEVC still open the file, play its AUDIO and report "playing": the picture never appears (black screen).
+     When that happens (or the file errors out), hevc.js looks inside the file, and converts it to H.264 + AAC in the browser. See hevc.js. */
+  let hevcP = null;
+  function loadHevc() {
+    if (window.CinemaHevc) return Promise.resolve(window.CinemaHevc);
+    if (hevcP) return hevcP;
+    hevcP = new Promise((resolve) => {
+      const s = document.createElement("script"); s.src = new URL("cinema/hevc.js", document.baseURI).href; s.async = true;
+      s.onload = () => resolve(window.CinemaHevc || null);
+      s.onerror = () => { hevcP = null; s.remove(); resolve(null); };              // no hevc.js: the player behaves exactly as it did before
+      document.head.appendChild(s);
+    });
+    return hevcP;
+  }
+  // bytes start..end (inclusive) of a Drive file, with the signed-in player's own token (same Drive API call the streaming helper makes)
+  async function readRange(id, start, end) {
+    const token = await getToken({ interactive: false });
+    let r;
+    try { r = await fetch(`${apiBase()}/drive/v3/files/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`, { headers: { Authorization: "Bearer " + token, Range: `bytes=${start}-${end}` }, cache: "no-store" }); }
+    catch (e) { throw new DriveError("network", "Couldn't reach Google Drive. Check your connection (or a firewall / ad-blocker)."); }
+    if (!r.ok) throw await httpError(r);
+    const buf = new Uint8Array(await r.arrayBuffer());
+    return r.status === 206 ? buf : buf.subarray(start, end + 1);
+  }
+
   /* ---------- the player adapter (same shape as the YouTube one; see providers.js) ---------- */
   const MEDIA_ERR = {
     3: "Your browser couldn't decode this video (the file is damaged, or uses a codec it doesn't support).",
@@ -168,8 +194,13 @@ const CinemaDrive = (() => {
       this.v = document.createElement("video"); this.v.className = "cin-html5"; this.v.setAttribute("playsinline", ""); this.v.preload = "auto"; this.v.controls = false; this.v.disablePictureInPicture = true; this.v.setAttribute("controlsList", "nodownload noremoteplayback");
       container.appendChild(this.v);
       const v = this.v, emit = () => { if (!this.dead && this.hooks.onState) this.hooks.onState(this.state()); };
-      for (const ev of ["playing", "pause", "waiting", "canplay", "ended", "seeked", "loadeddata"]) v.addEventListener(ev, () => { if (ev === "playing") this.started = true; emit(); });
-      v.addEventListener("loadedmetadata", () => { if (this.pendingSeek != null) { try { v.currentTime = this.pendingSeek; } catch (e) { /* ignore */ } this.pendingSeek = null; } emit(); });
+      this._emit = emit; this.converting = null; this.converted = null; this.hevcTried = false; this.stage = 0; this._src = {}; this.sniffed = undefined; this._hevcP = null; this.abort = null; this.blobUrl = null; this._watch = 0;
+      for (const ev of ["playing", "pause", "waiting", "canplay", "ended", "seeked", "loadeddata"]) v.addEventListener(ev, () => { if (ev === "playing") { this.started = true; this._arm(); } emit(); });
+      v.addEventListener("loadedmetadata", () => {
+        if (this.pendingSeek != null) { try { v.currentTime = this.pendingSeek; } catch (e) { /* ignore */ } this.pendingSeek = null; }
+        if (v.videoWidth === 0 && this.meta && /^video\//i.test(this.meta.mime || "")) this._hevcFallback("novideo");         // opened, but no picture can be decoded: the black-screen case
+        emit();
+      });
       v.addEventListener("ratechange", () => { if (!this.dead && this.hooks.onRate) this.hooks.onRate(v.playbackRate); });
       v.addEventListener("error", () => this._mediaError());
       this.ready = Promise.resolve().then(() => { if (!this.dead && this.hooks.onReady) this.hooks.onReady(); });
@@ -186,11 +217,77 @@ const CinemaDrive = (() => {
         } catch (e) { if (!this.dead && seq === this.seq) return this._fail(e); }
       }
       if (this.dead || seq !== this.seq) return;
+      if ((code === 3 || code === 4) && await this._hevcFallback("error")) return;       // an HEVC file the browser can't open: convert it instead of giving up
+      if (this.dead || seq !== this.seq) return;
       this._fail(new DriveError("media", MEDIA_ERR[code] || "The connection to Google Drive dropped while streaming. Try again."));
     }
+
+    /* ---------- HEVC fallback ---------- */
+    get status() { return this.converting ? this.converting.text : ""; }              // shown by the cinema while the video is being prepared
+    // After 3 s of playback: no frame was ever drawn (the decoder gave up half-way), or no audio was ever decoded -> look inside the file.
+    _arm() {
+      if (this._watch || this.converting || this.stage >= 2) return;                // stage: 0 = the original file, 1 = repackaged (video copied), 2 = re-encoded: nothing left to try
+      const seq = this.seq;
+      this._watch = setTimeout(() => {
+        this._watch = 0; const v = this.v; if (this.dead || seq !== this.seq || v.paused || v.currentTime < 1) return;
+        const q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null;
+        if (q && q.totalVideoFrames === 0) this._hevcFallback("novideo");
+        else if (typeof v.webkitAudioDecodedByteCount === "number" && v.webkitAudioDecodedByteCount === 0) this._hevcFallback("noaudio");
+      }, 3000);
+    }
+    // true = this is an HEVC file that needed help and the conversion has started; false = not our business (the old behaviour carries on)
+    _hevcFallback(why) {
+      if (this._hevcP) return this._hevcP;
+      if (this.dead || this.converting || this.stage >= 2 || !this.fileId || !this.meta) return Promise.resolve(false);
+      const p = (this._hevcP = this._hevcRun(why).catch(() => false).then((r) => { if (this._hevcP === p) this._hevcP = null; return r; }));
+      return p;
+    }
+    async _hevcRun(why) {
+      const seq = this.seq, id = this.fileId, meta = this.meta, Hv = await loadHevc();
+      if (!Hv || this.dead || seq !== this.seq || !Hv.isCandidate(meta.mime, meta.name) || Hv.isAvi(meta.mime, meta.name)) return false;
+      let info = this.sniffed;
+      if (info === undefined) { try { info = await Hv.sniff((a, b) => readRange(id, a, b), meta.size); } catch (e) { info = null; } if (this.dead || seq !== this.seq) return false; this.sniffed = info; }
+      if (!info || !info.hevc) return false;
+      const plan = await Hv.plan(info); if (this.dead || seq !== this.seq) return false;
+      // The cheapest fix that can work, escalating only when the previous one did not give a picture:
+      //   1. the browser can decode HEVC but not the file as it is (an MKV, or AC-3 / DTS sound) -> "remux": copy the video untouched into an MP4, sound -> AAC (lossless, quick)
+      //   2. the browser cannot decode HEVC at all, or the repackaged copy still shows nothing   -> "transcode": H.264 + AAC
+      let mode;
+      if (this.stage >= 1) mode = why === "noaudio" ? null : "transcode";
+      else if (plan.action === "transcode") mode = why === "noaudio" ? null : "transcode";
+      else if (why === "noaudio") mode = info.audio && info.audio.audio !== "aac" ? "remux" : null;                 // silent AAC is not something conversion fixes
+      else mode = "remux";
+      if (!mode) return false;
+      this.hevcTried = true; this._convert(mode, info, seq);
+      return true;
+    }
+    async _convert(mode, info, seq) {
+      const id = this.fileId, v = this.v, Hv = window.CinemaHevc, ctl = (this.abort = new AbortController());
+      this.stage = mode === "remux" ? 1 : 2;
+      this.converting = { mode, text: mode === "remux" ? "Preparing this video for your browser…" : "Preparing this HEVC video for your browser…" };
+      clearTimeout(this._watch); this._watch = 0;
+      if (this.blobUrl) { URL.revokeObjectURL(this.blobUrl); this.blobUrl = null; }               // the repackaged copy that did not work
+      try { v.pause(); v.removeAttribute("src"); v.load(); } catch (e) { /* ignore */ }
+      release(id); this._emit();
+      try {
+        const blob = await Hv.convert({ mode, info, size: this.meta.size, read: (a, b) => readRange(id, a, b), onStatus: (t) => { if (this.converting) this.converting.text = t; }, signal: ctl.signal, cache: this._src });
+        if (this.dead || seq !== this.seq) return;
+        this.blobUrl = URL.createObjectURL(blob); this.converted = mode; this.converting = null;
+        v.src = this.blobUrl; this._emit();
+      } catch (e) {
+        if (this.dead || seq !== this.seq || (e && e.aborted)) return;
+        this.converting = null; this._fail(e instanceof DriveError ? e : new DriveError("media", (e && e.message) || "Couldn't convert this video."));
+      }
+    }
+    _resetHevc() {
+      if (this.abort) { try { this.abort.abort(); } catch (e) { /* ignore */ } this.abort = null; }
+      if (this.blobUrl) { URL.revokeObjectURL(this.blobUrl); this.blobUrl = null; }
+      clearTimeout(this._watch); this._watch = 0; this.converting = null; this.converted = null; this.hevcTried = false; this.stage = 0; this._src = {}; this.sniffed = undefined; this._hevcP = null;
+    }
+
     async load(videoId, { start = 0, autoplay = false, interactive = false } = {}) {
       if (!C.DRIVE_ID.test(videoId || "")) throw new DriveError("invalid", "Invalid Drive file id.");
-      const seq = ++this.seq; this.fileId = videoId; this.started = false; this.fatal = false; this.meta = null; this.clearSubtitles();   // subtitles belong to one video
+      const seq = ++this.seq; this.fileId = videoId; this.started = false; this.fatal = false; this.meta = null; this.clearSubtitles(); this._resetHevc();   // subtitles belong to one video
       const v = this.v; v.pause(); v.removeAttribute("src"); v.load();
       let token, meta;
       try { token = await getToken({ interactive }); meta = await fetchMeta(videoId, token); }
@@ -220,7 +317,9 @@ const CinemaDrive = (() => {
     duration() { const d = this.v.duration; return isFinite(d) && d > 0 ? d : this.meta && this.meta.durationMs ? this.meta.durationMs / 1000 : 0; }
     state() {
       const v = this.v;
-      if (this.dead || this.fatal || !this.fileId || !v.currentSrc && !v.getAttribute("src")) return "unstarted";
+      if (this.dead || this.fatal || !this.fileId) return "unstarted";
+      if (this.converting) return "buffering";                                   // being converted: the partner sees "buffering", keeps watching, and we rejoin the shared position afterwards
+      if (!v.currentSrc && !v.getAttribute("src")) return "unstarted";
       if (v.ended) return "ended";
       if (!v.paused) return v.readyState < 3 ? "buffering" : "playing";
       if (v.seeking && !this.started) return "unstarted";
@@ -234,7 +333,7 @@ const CinemaDrive = (() => {
     rate() { return this.v.playbackRate || 1; }
     title() { return this.meta ? this.meta.name : ""; }
     destroy() {
-      this.dead = true; this.seq++; this.clearSubtitles();
+      this.dead = true; this.seq++; this.clearSubtitles(); this._resetHevc();
       try { this.v.pause(); this.v.removeAttribute("src"); this.v.load(); } catch (e) { /* ignore */ }
       if (this.fileId) release(this.fileId);
       this.hooks = {}; this.v.remove();
